@@ -1,2 +1,35 @@
-# AlumniLink
-A React web app connecting current students and alumni by year group, programme, and industry to foster mentorship, referrals, and career guidance.
+# AlumniLink 🎓
+
+AlumniLink is a dedicated student and alumni network built with React. It bridges the gap between current students and graduates by providing a centralized, trusted platform to find mentors, reconnect with year groups, and share career opportunities.
+
+## ⚠️ The Problem
+Students and graduates often struggle to stay connected. Contact details scatter across various social media groups, and relationships fade post-graduation. Without a single hub, students miss out on valuable internships and guidance, while alumni lack an easy, structured way to give back to their community.
+
+## 🎯 Target Audience
+* **Current Students:** Seeking mentors, internships, and career guidance.
+* **Alumni:** Looking to reconnect with their batch and offer mentorship.
+* **University Departments:** Managing alumni relations and associations.
+
+## ✨ Core Features
+* **Verified Accounts:** Sign up authenticated by graduation year, programme, and batch.
+* **Smart Directory:** Browse and connect with classmates via batch and programme directories.
+* **Rich Alumni Profiles:** Showcase current work, skills, and willingness to mentor.
+* **Advanced Search:** Filter users by industry, company, programme, or location.
+* **Networking Tools:** Send connection requests, direct messages, and join batch group pages.
+* **Opportunity Board:** Discover and post reunions, jobs, and internships.
+* **Accessible UI:** A simple, text-light interface featuring an accessible colour scheme.
+
+## 🛠️ Tech Stack
+* **Frontend:** React.js
+* **Backend:** [To be determined - e.g., Node.js/Express]
+* **Database:** [To be determined - e.g., PostgreSQL/MongoDB]
+
+## 🚀 Getting Started
+
+### Prerequisites
+Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
+
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/your-username/alumnilink.git](https://github.com/your-username/alumnilink.git)
