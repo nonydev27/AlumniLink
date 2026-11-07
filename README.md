@@ -1,19 +1,49 @@
-# React + Vite
+# AlumniLink 🎓
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AlumniLink is a dedicated student and alumni network built with React. It bridges the gap between current students and graduates by providing a centralized, trusted platform to find mentors, reconnect with year groups, and share career opportunities.
 
-Currently, two official plugins are available:
+## ⚠️ The Problem
+Students and graduates often struggle to stay connected. Contact details scatter across various social media groups, and relationships fade post-graduation. Without a single hub, students miss out on valuable internships and guidance, while alumni lack an easy, structured way to give back to their community.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🎯 Target Audience
+* **Current Students:** Seeking mentors, internships, and career guidance.
+* **Alumni:** Looking to reconnect with their batch and offer mentorship.
+* **University Departments:** Managing alumni relations and associations.
 
-## React Compiler
+## ✨ Core Features
+* **Verified Accounts:** Sign up authenticated by graduation year, programme, and batch.
+* **Smart Directory:** Browse and connect with classmates via batch and programme directories.
+* **Rich Alumni Profiles:** Showcase current work, skills, and willingness to mentor.
+* **Advanced Search:** Filter users by industry, company, programme, or location.
+* **Networking Tools:** Send connection requests, direct messages, and join batch group pages.
+* **Opportunity Board:** Discover and post reunions, jobs, and internships.
+* **Accessible UI:** A simple, text-light interface featuring an accessible colour scheme.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## 🛠️ Tech Stack
+* **Frontend:** React.js
+* **Backend:** [To be determined - e.g., Node.js/Express]
+* **Database:** [To be determined - e.g., PostgreSQL/MongoDB]
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+## 🚀 Getting Started
 
-## Expanding the ESLint configuration
+### Prerequisites
+Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/your-username/alumnilink.git](https://github.com/your-username/alumnilink.git)
+
+## 👥 Group 30 - Team Members
+
+| Name | Index Number | Role | GitHub |
+| :--- | :--- | :--- | :--- |
+| Karl Djansi | 6154724 | Project Manager | [@nonydev27](https://github.com/nonydev27) |
+| Iberi Oluchi Favour | 6162124 | Quality Assurance | [@kingluchy](https://github.com/kingluchy) |
+| Mubarak Abdul Samed | 6169724 | UI/UX | [@AbdulSamed76](https://github.com/AbdulSamed76) |
+| Noble Nyameyenokwarfo Williams | 6185124 | UI/UX | [@wnoble979](https://github.com/wnoble979) |
+| Aboah Padmore | 6124224 | Frontend Developer | [@paddy-boy](https://github.com/paddy-boy) |
+| Atweri Michael Baffour Awuah | 6147224 | Frontend Developer | [@buttoski-mike](https://github.com/buttoski-mike) |
+| Agyemang Felix | 6131924 | Backend Developer | [@fbagyemang6](https://github.com/fbagyemang6) |
+| Boateng Osei Godsway Kofi | - | Backend Developer | [@gkosei13](https://github.com/gkosei13) |
+| Gideon Anaman | - | User Researcher | [@doveloita-spec](https://github.com/doveloita-spec) |
