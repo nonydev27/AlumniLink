@@ -45,5 +45,5 @@ Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 | Aboah Padmore | 6124224 | Frontend Developer | [@paddy-boy](https://github.com/paddy-boy) |
 | Atweri Michael Baffour Awuah | 6147224 | Frontend Developer | [@buttoski-mike](https://github.com/buttoski-mike) |
 | Agyemang Felix | 6131924 | Backend Developer | [@fbagyemang6](https://github.com/fbagyemang6) |
-| Boateng Osei Godsway Kofi | - | Backend Developer | [@gkosei13](https://github.com/gkosei13) |
+| Osei Godsway Kofi | - | Backend Developer | [@gkosei13](https://github.com/gkosei13) |
 | Gideon Anaman | - | User Researcher | [@doveloita-spec](https://github.com/doveloita-spec) |
