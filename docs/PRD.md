@@ -1,153 +1,121 @@
-# Pharmacy Finder — PRD & Team Plan
+# AlumniLink: Product Requirements
 
-**Team leads:** King-Frederick and Karl · **Stack:** Next.js (latest) + Java Spring Boot · **Version:** 1.0
+**Team:** Group 30 · **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS v4 + React Router 7 · **Backend:** to be decided
 
 ---
 
 ## 1. Overview
 
-**One-liner:** Tell an AI chatbot how you feel, and Pharmacy Finder tells you what to ask for, which nearby pharmacy actually has it in stock, and gets it to you, so you never walk from shop to shop again.
+**One-liner:** A verified student and alumni network that connects current students with graduates for mentorship, networking and career opportunities.
 
 ### Problem
-Students and residents around campus often feel unwell, walk to one pharmacy, find the drug out of stock, and repeat. They also don't always know what to ask for. This wastes time when people are sick and least able to spare it.
+Students graduate without ever speaking to someone already working in their field, and miss internships and guidance. Alumni want to give back but have no simple, structured way to do it. Contact details are scattered across social media groups, and relationships fade after graduation. Existing platforms are crowded, impersonal and not designed around student-to-alumni mentorship.
 
-### Solution
-A web app that combines:
-1. A live map and search of campus-area pharmacies with stock visibility.
-2. An AI symptom assistant that suggests over-the-counter options and when to see a doctor.
-3. In-app ordering with pickup or delivery from the nearest pharmacy that has the item.
+### Objectives
+- Connect students to relevant alumni quickly and simply.
+- Use AI to guide users in a way that is clear, honest and trustworthy.
+- Ensure every student, including those with disabilities, can use the system.
+- Design pages whose controls are fast, easy to reach and hard to use by mistake (Fitts' Law).
+- Build a responsive website that works on any device and on slow connections.
 
-### Target Users
-- **Patients:** Students and staff near campus (primary).
-- **Pharmacy staff:** Update stock, accept and fulfil orders.
-- **Riders (optional, phase 2):** Deliver orders.
-- **Admin:** Approve pharmacies, monitor the platform.
-
----
-
-## 2. Goals
-- Go from symptoms to a confirmed order in under 3 minutes.
-- Show reliable, recently updated stock for partner pharmacies.
-- **Be safe:** The AI never diagnoses, and always escalates serious symptoms.
-
----
-
-## 3. Features
-
-### Core
-1. **Auth and profiles:** Sign up and log in (email and password, Google login), roles (patient, pharmacy, admin), saved delivery address.
-2. **Pharmacy directory and map:** List and map of nearby pharmacies, distance, opening hours, rating, open-now badge.
-3. **Drug search with live stock:** Search by drug name; see which pharmacies have it, price, and last-updated time.
-4. **AI symptom chatbot:** User describes symptoms; the bot asks follow-up questions, suggests OTC medicine names to ask for, gives basic dosage guidance from the label and warning signs, then offers "Find it nearby".
-5. **Smart order routing:** From the chatbot's suggestion, find the nearest pharmacy with stock and place the order in one tap.
-6. **Cart and checkout:** Pickup or delivery; payment through Paystack (card and mobile money) plus a pay-on-pickup option.
-7. **Order tracking:** Statuses: `placed`, `accepted`, `ready`, `out for delivery`, `completed`, `cancelled`. Live updates.
-8. **Pharmacy dashboard:** Manage inventory (add, edit, bulk CSV upload), set prices, toggle in/out of stock, accept or reject orders.
-9. **Admin panel:** Approve pharmacy registrations, manage drugs catalogue, view orders and reports.
-10. **Notifications:** Email and in-app (SMS later) for order updates.
-
-### Safety and Trust (Highest Priority)
-- **Red-flag detection:** Chest pain, difficulty breathing, severe bleeding, etc. skip the drug suggestions and show an emergency message and nearby hospitals.
-- **Allergy and interaction check:** User lists allergies and current meds; the bot warns on conflicts.
-- **Prescription upload:** Photo upload for Rx-only drugs; pharmacist verifies before fulfilment.
-- **Verified pharmacy badge:** Pharmacies show their licence number after admin approval.
-
-### Convenience
-- **Out-of-stock alerts:** "Notify me when this is back".
-- **Generic alternatives:** If the brand is unavailable, suggest an equivalent active ingredient with price comparison.
-- **Price comparison:** Cheapest, nearest, or fastest sort.
-- **Reorder and refill reminders:** For recurring medicines.
-- **Voice input and photo search:** Speak symptoms, or snap a medicine box to identify it.
-- **Multi-language chat:** English first, Twi as a stretch goal.
-- **Reservations:** Reserve an item for 30 minutes while the user walks over.
-
-### Engagement and Operations
-- **Pharmacy ratings and reviews.**
-- **Pharmacy analytics:** Most-searched drugs, demand heatmap, low-stock alerts.
-- **PWA:** Installable on a phone, works well on weak networks.
-- **Dark mode and accessibility:** Readable and usable for everyone.
-
----
-
-## 4. Tech Stack
-
-**Architecture:** Next.js app → REST API (Spring Boot) → PostgreSQL, with the AI service, payments and notifications as modules inside the backend.
-
-| Layer | Choice |
+### Target users
+| User group | Main needs |
 | :--- | :--- |
-| **Frontend** | Next.js (latest, App Router), TypeScript, Tailwind CSS, shadcn/ui |
-| **State and data fetching** | TanStack Query, Zod for validation |
-| **Backend** | Java 21, Spring Boot 3.x (Web, Security, Data JPA, Validation) |
-| **Auth** | JWT (access and refresh tokens) with Spring Security |
-| **Database** | PostgreSQL (with PostGIS or Haversine queries for distance) |
-| **Realtime** | WebSockets (STOMP) or Server-Sent Events for order status |
-| **AI** | Groq API (fast LLM inference), called only from the backend (never from the browser), with a strict safety system prompt |
-| **Maps** | Leaflet with OpenStreetMap (free), or Google Maps |
-| **Payments** | Paystack (test mode for development) |
-| **API docs** | Springdoc OpenAPI (Swagger UI) |
-| **DevOps** | GitHub, GitHub Actions CI, Docker, deploy on Vercel (frontend) and Render or Railway (backend + DB) |
+| Current students | Find mentors, career guidance, internships and events. |
+| Alumni | Share experience, offer opportunities, manage how and when they are contacted. |
+| Administrators / departments | Verify alumni, moderate content, manage alumni relations. |
+| Users with special needs | Equal access through assistive technology and inclusive design. |
 
 ---
 
-## 5. Main Data Model
+## 2. Core features
 
-- **User:** `(id, name, email, role, phone, password hash)`
-- **Pharmacy:** `(id, owner → User, name, licence no., address, lat, lng, hours, verified)`
-- **Drug:** `(id, name, generic name, category, requires_prescription)`
-- **Inventory:** `(pharmacy → Pharmacy, drug → Drug, price, quantity, updated_at)`
-- **Order:** `(id, patient → User, pharmacy → Pharmacy, status, type [pickup/delivery], total, address)`
-- **OrderItem:** `(order, drug, qty, price)`
-- **ChatSession / ChatMessage:** `(user, messages, suggested drugs)`
-- **Additional Models:** `Review`, `Notification`, `StockAlert`, `Prescription`
+1. **Verified accounts:** sign up with graduation year, programme, batch and index number. Alumni are verified by the Alumni Relations Office.
+2. **Smart directory:** browse and search by batch and programme.
+3. **Rich profiles:** current work, skills, interests, career goals, willingness to mentor.
+4. **Advanced search:** filter by industry, company, programme, batch, location and "open to mentoring".
+5. **Networking:** connection and mentorship requests, direct messages, batch group pages.
+6. **Opportunity board:** jobs, internships, webinars, events and reunions posted by alumni and the university.
+7. **Admin panel:** verification queue, reports and moderation, platform statistics.
+8. **Accessible UI:** simple, text-light, high-contrast interface.
 
----
+## 3. Main pages
 
-## 6. API Outline (REST, `/api/v1`)
-
-- `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`
-- `GET /pharmacies?lat=&lng=&radius=`, `GET /pharmacies/{id}`
-- `GET /drugs?query=`, `GET /drugs/{id}/availability?lat=&lng=`
-- `POST /chat/message` (symptom assistant)
-- `POST /orders`, `GET /orders/{id}`, `PATCH /orders/{id}/status`
-- `GET /pharmacy/inventory`, `PUT /pharmacy/inventory` (pharmacy role), `POST /pharmacy/inventory/import`
-- `POST /alerts` (stock alert), `POST /reviews`
-- **Admin:** `PATCH /admin/pharmacies/{id}/verify`
-
----
-
-## 7. Team Split
-
-Work is split by area so people don't block each other. Each member owns their area; Karl reviews frontend pull requests and King-Frederick reviews backend ones.
-
-| Member | Role | Responsibilities |
-| :--- | :--- | :--- |
-| **King-Frederick** | Team lead, architecture and integration | Repo, branch rules and CI; Spring Boot skeleton, auth and security; code reviews; integration and deployment |
-| **Karl** | Co-team lead, frontend lead and design | Design system, wireframes and UI/UX; Next.js setup and layout; auth pages, map and search pages, chatbot UI, ordering flow; guides Duke on frontend tasks |
-| **Michael** | Backend: AI and chatbot | Groq integration, chat endpoint, safety system prompt, red-flag logic, allergy and interaction checks, symptom-to-drug mapping |
-| **Prince** | Backend: core domain | Pharmacy, drug and inventory APIs; nearest-pharmacy-with-stock query; order flow and statuses; Paystack payments integration; mentors Kevin |
-| **Duke** | Frontend | Landing and about pages, pharmacy and drug cards, reviews UI, dark mode, navigation and footer; then pharmacy dashboard UI and order tracking page |
-| **Kevin** | Backend: engagement features and data | Builds real Spring Boot features under Prince's guidance: reviews and ratings, notifications, out-of-stock alerts, CSV inventory import and seed data; writes unit and API tests and docs for his own endpoints |
+| Route | Page |
+| :--- | :--- |
+| `/` | Landing page |
+| `/login`, `/register` | Sign in / sign up as student or alumnus |
+| `/dashboard` | AI-suggested mentors, recommended opportunities, requests, profile strength |
+| `/directory` | Search and filter alumni and students |
+| `/people/:id`, `/profile`, `/profile/edit` | View and edit profiles |
+| `/network` | Connections, received and sent requests |
+| `/messages/:id?` | Chat with AI message coaching and follow-up ideas |
+| `/opportunities` | Jobs, internships and events; post, save and report |
+| `/batches`, `/batches/:year` | Batch group pages with posts and members |
+| `/settings` | Accessibility, AI and privacy settings; account |
+| `/admin` | Verification queue and reports (admin only) |
 
 ---
 
-## 8. Non-functional Requirements
+## 4. AI-driven feedback
 
-- **Security:** Hashed passwords (BCrypt), JWT, role-based access, input validation, rate limiting on the chat endpoint, HTTPS in production.
-- **Privacy:** Health-related chats are sensitive. Collect the minimum data, don't log full chat content in plain logs, and let users delete their history.
-- **Performance:** Search results in under 1 second; pages load fast on mobile data.
-- **Reliability:** Show "last updated" on stock; mark stock older than a set period as unverified.
-- **Usability:** Mobile-first, simple language, accessible colours and font sizes.
+AI supports users and never replaces their judgement.
+
+| Feature | What the AI does |
+| :--- | :--- |
+| Alumni matching | Suggests mentors from course, interests, skills and career goals. |
+| Profile feedback | Tips such as "Add your skills to get better mentor matches." |
+| Message coaching | Helps a student write a clear, polite first message (on request only). |
+| Opportunity alerts | Recommends internships, events and jobs, with a reason. |
+| Conversation support | Suggests follow-up questions after a mentoring chat. |
+
+**Principles (all implemented):**
+- Explain why ("Why this match?").
+- Label every output "AI suggestion".
+- Show uncertainty ("may be a good fit").
+- Keep the user in control: accept, dismiss, report, or turn AI off, with short or detailed explanations.
+- No false promises or fake urgency.
+- Simple language.
+- Honest failure ("We need more details to suggest mentors").
+- Privacy: only profile fields are used, and contact details are never shared without consent.
+- A "Was this helpful?" feedback loop.
+- Fairness: matching never uses gender, background or ranking.
+- A human fallback: contact an administrator.
+
+## 5. Accessibility (WCAG 2.2 AA)
+
+- Semantic HTML, landmarks, labelled form fields, a skip link, and visible focus styles.
+- Text contrast of at least 4.5:1. Status is never shown by colour alone (icon + text).
+- Full keyboard access. Native `<dialog>` modals with focus trapping.
+- User settings: text size (100 / 112.5 / 125%), high-contrast mode and reduced motion.
+- Voice input for search and messages (Web Speech API, where supported).
+- Messages never disappear on their own, and there are no time limits in chat or forms.
+- Text-first, code-split pages for low bandwidth and older devices.
+
+## 6. Fitts' Law
+
+| Element | Application |
+| :--- | :--- |
+| Connect / Request mentorship | Large (48px), full-width, primary-coloured buttons. |
+| Mobile navigation | Bottom bar: Home, Alumni, Jobs, Messages, Profile. |
+| Search bar | Wide and at the top of the directory. |
+| Accept / Dismiss | Side by side, equal size, spaced apart. |
+| Delete account, Block, Delete post | Small, placed away from primary actions, always confirmed. |
+| Desktop navigation | Sidebar on the screen edge. |
+| Related actions | Grouped (e.g. Message next to View profile). |
+
+All interactive targets are at least 44×44px.
 
 ---
 
-## 9. Success Metrics
+## 7. Backend handover
 
-- Time from first message to order placed: under 3 minutes.
-- At least 5 partner pharmacies with live stock at demo.
-- Order success rate and stock accuracy (sampled checks).
-- Zero unsafe responses on the red-flag test set.
+The frontend currently uses a mock data layer (`client/src/lib/store.tsx`) persisted to `localStorage`, seeded from `client/src/data/seed.ts`. Each store action maps 1:1 to a REST endpoint. The domain types in `client/src/types.ts` are the API contract. The rule-based AI in `client/src/lib/ai.ts` can move server-side, but must keep the same contract: reasons, uncertain wording and honest failure.
 
----
+Required backend concerns: HTTPS, authentication with verified roles, index-number verification, consent-based privacy enforcement, moderation, and rate limiting.
 
-> [!IMPORTANT]
-> **Medical Disclaimer:** The AI assistant provides general information only and is not a substitute for a doctor or pharmacist. This should be stated clearly in the product.
+## 8. References
+- W3C (2023). Web Content Accessibility Guidelines (WCAG) 2.2.
+- Fitts, P. M. (1954). The information capacity of the human motor system in controlling the amplitude of movement.
+- Nielsen, J. (1994). 10 Usability Heuristics for User Interface Design.
+- Amershi, S. et al. (2019). Guidelines for Human-AI Interaction. CHI 2019.
