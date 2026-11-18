@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 import studentsImg from '../assets/auth-students.jpg';
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +16,7 @@ export default function RegisterPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Register attempt:', { fullName, email, password, confirmPassword, agreedToTerms });
+    navigate('/onboarding');
   };
 
   return (
