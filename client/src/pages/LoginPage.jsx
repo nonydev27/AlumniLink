@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, GraduationCap, ShieldCheck, Star } from 'lucide-react';
 import loginAlumnusImg from '../assets/login-alumnus.jpg';
 import { AlumniLinkLogoMark } from '../components/AlumniLinkLogo';
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Login attempt with:', { email, password, rememberMe });
+    navigate('/notifications');
   };
 
   return (
@@ -87,12 +89,12 @@ export default function LoginPage() {
         {/* Right Form Panel */}
         <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
           {/* Logo Header */}
-          <div className="flex items-center gap-2.5 mb-4">
+          <Link to="/" className="flex items-center gap-2.5 mb-4 hover:opacity-85 transition w-fit">
             <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
             <span className="text-xl font-bold tracking-tight text-[#0B1B2B]">
               Alumni<span className="text-[#FF7E86]">Link</span>
             </span>
-          </div>
+          </Link>
 
           {/* Header Texts */}
           <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#0B1B2B] tracking-tight">

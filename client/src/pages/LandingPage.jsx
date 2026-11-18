@@ -270,7 +270,7 @@ export default function LandingPage() {
       </section>
 
       {/* 4. FAST SIGN-UP NAVY VALUE BANNER */}
-      <section id="about" className="py-20 bg-[#0B1B2B] text-white relative overflow-hidden">
+      <section id="about" className="py-20 bg-[#0B1B2B] text-white relative overflow-hidden scroll-mt-18">
         {/* Ambient background glow */}
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#1E7497]/20 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#FF7E86]/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -439,7 +439,7 @@ export default function LandingPage() {
       </section>
 
       {/* 5. "EVERYTHING YOU NEED" FEATURE BENTO GRID */}
-      <section id="directory" className="py-20 bg-white">
+      <section id="directory" className="py-20 bg-white scroll-mt-18">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-14">
@@ -507,7 +507,7 @@ export default function LandingPage() {
             </div>
 
             {/* Bento Card 3: Career Opportunities */}
-            <div className="bg-[#F8FAFC] rounded-3xl p-6 sm:p-7 flex flex-col justify-between border border-slate-100 shadow-2xs hover:border-slate-200 transition">
+            <div id="opportunities" className="bg-[#F8FAFC] rounded-3xl p-6 sm:p-7 flex flex-col justify-between border border-slate-100 shadow-2xs hover:border-slate-200 transition scroll-mt-24">
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <div className="w-10 h-10 rounded-2xl bg-[#FFF0F2] text-[#FF7E86] flex items-center justify-center">
@@ -627,7 +627,7 @@ export default function LandingPage() {
       </section>
 
       {/* 7. FEATURED MENTORS GRID */}
-      <section id="mentorship" className="py-20 bg-white">
+      <section id="mentorship" className="py-20 bg-white scroll-mt-18">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
@@ -776,7 +776,7 @@ export default function LandingPage() {
           </div>
 
           {/* Testimonial Banner */}
-          <div className="mt-12 bg-[#0B1B2B] text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
+          <div id="stories" className="mt-12 bg-[#0B1B2B] text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl scroll-mt-24">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-white text-[#0B1B2B] font-bold flex items-center justify-center flex-shrink-0">
                 AM

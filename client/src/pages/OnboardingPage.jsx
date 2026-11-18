@@ -42,10 +42,12 @@ export default function OnboardingPage() {
       <header className="bg-white border-b border-slate-100 px-6 sm:px-12 py-4 flex items-center justify-between sticky top-0 z-30">
         {/* Brand Logo & Pill */}
         <div className="flex items-center gap-3">
-          <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
-          <span className="text-lg font-bold tracking-tight text-[#0B1B2B]">
-            Alumni<span className="text-[#FF7E86]">Link</span>
-          </span>
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-85 transition">
+            <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
+            <span className="text-lg font-bold tracking-tight text-[#0B1B2B]">
+              Alumni<span className="text-[#FF7E86]">Link</span>
+            </span>
+          </Link>
           <span className="ml-1 bg-[#E8F5FA] text-[#1E7497] text-xs font-bold px-3 py-1 rounded-full">
             Profile Setup
           </span>

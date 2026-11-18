@@ -172,7 +172,7 @@ export default function NotificationsPage() {
       <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between p-5 sticky top-0 h-screen hidden lg:flex flex-shrink-0 z-30">
         <div>
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-8 px-2">
+          <Link to="/" className="flex items-center gap-3 mb-8 px-2 hover:opacity-85 transition">
             {/* AlumniLink Connected Nodes Icon */}
             <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
             <div>
@@ -183,7 +183,7 @@ export default function NotificationsPage() {
                 BEYOND GRADUATION
               </span>
             </div>
-          </div>
+          </Link>
 
           {/* Navigation Links */}
           <nav className="space-y-1">

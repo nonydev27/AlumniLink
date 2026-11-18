@@ -92,12 +92,12 @@ export default function RegisterPage() {
         {/* Right Form Panel */}
         <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
           {/* Logo Header */}
-          <div className="flex items-center gap-2.5 mb-4">
+          <Link to="/" className="flex items-center gap-2.5 mb-4 hover:opacity-85 transition w-fit">
             <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
             <span className="text-xl font-bold tracking-tight text-[#0B1B2B]">
               Alumni<span className="text-[#FF7E86]">Link</span>
             </span>
-          </div>
+          </Link>
 
           {/* Header Texts */}
           <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#0B1B2B] tracking-tight">
