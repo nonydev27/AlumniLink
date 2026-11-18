@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GraduationCap, ShieldCheck, Star } from 'lucide-react';
+import loginAlumnusImg from '../assets/login-alumnus.jpg';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,48 +17,55 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen md:h-screen w-full bg-[#F0F4F8] flex items-center justify-center p-4 sm:p-6 md:p-8 font-sans overflow-x-hidden md:overflow-hidden select-none">
       {/* Main Split Card Container */}
-      <div className="w-full max-w-md md:max-w-4xl lg:max-w-5xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+      <div className="w-full max-w-md md:max-w-4xl lg:max-w-[1040px] bg-white rounded-[32px] shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[600px]">
         
-        {/* Left Visual Branding Panel — hidden on very small mobile, visible md and up */}
-        <div className="hidden md:flex bg-[#93CBE2] p-6 lg:p-8 flex-col justify-between relative overflow-hidden">
-          {/* Top Tag */}
-          <div className="z-10">
-            <span className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm">
-              <GraduationCap className="w-4 h-4 text-slate-700" />
+        {/* Left Visual Branding Panel (Figma Sky Blue Panel) */}
+        <div className="hidden md:flex bg-[#A1D1E6] p-7 lg:p-9 flex-col justify-between relative overflow-hidden">
+          {/* Top Tags */}
+          <div className="z-10 flex items-center justify-between">
+            <span className="inline-flex items-center gap-2 bg-white/95 text-slate-800 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm">
+              <GraduationCap className="w-3.5 h-3.5 text-slate-800" />
               Verified University Network
+            </span>
+            <span className="w-7 h-7 rounded-full bg-white/90 text-slate-800 text-[11px] font-bold flex items-center justify-center shadow-sm">
+              AU
             </span>
           </div>
 
           {/* Center Card Visual Representation */}
-          <div className="my-auto py-4 relative z-10">
-            <div className="relative max-w-sm mx-auto">
-              {/* Main Photo Card — seamless rounded corners, NO border outline */}
-              <div className="rounded-[22px] overflow-hidden shadow-md">
+          <div className="my-auto py-5 relative z-10 w-full">
+            <div className="relative w-full">
+              {/* Main Photo Card — fills width between left and right tags */}
+              <div className="rounded-[22px] overflow-hidden shadow-md w-full">
                 <img
-                  src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80"
-                  alt="University students studying together"
-                  className="w-full h-44 lg:h-52 object-cover block"
+                  src={loginAlumnusImg}
+                  alt="Alumni working in innovation hub"
+                  className="w-full h-56 lg:h-64 object-cover block"
                 />
               </div>
 
-              {/* Floating Top-Right Mentor Match Badge — subtle rounded corners */}
-              <div className="absolute -top-3 -right-4 bg-white text-slate-800 text-[11px] font-bold px-3 py-1.5 rounded-[10px] shadow-lg flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#E8513D]"></span>
-                Mentor Match: 98%
-                <span className="text-[#E8513D] text-xs">★</span>
+              {/* Floating Top-Right Mentor Match Badge */}
+              <div className="absolute -top-3.5 right-4 bg-white py-1.5 px-3.5 rounded-[14px] shadow-lg flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-[#FF7E86]/20 flex items-center justify-center">
+                  <span className="text-[#FF7E86] text-[10px]">★</span>
+                </div>
+                <div className="text-left leading-tight">
+                  <p className="text-[11px] font-bold text-[#0B1B2B]">Mentor Match</p>
+                  <p className="text-[9px] font-semibold text-slate-400">98% Compatibility</p>
+                </div>
               </div>
 
-              {/* Floating Bottom-Left Priya Sharma Badge — subtle rounded corners */}
-              <div className="absolute -bottom-4 -left-4 bg-white py-2 px-3.5 rounded-[10px] shadow-xl flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#0B1B2B] text-white flex items-center justify-center font-bold text-[11px] ring-2 ring-[#E8513D] flex-shrink-0">
+              {/* Floating Bottom-Left Priya Sharma Badge */}
+              <div className="absolute -bottom-4 left-4 bg-white py-2 px-3.5 rounded-[14px] shadow-xl flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#0B1B2B] text-white flex items-center justify-center font-bold text-[11px] ring-2 ring-[#FF7E86] flex-shrink-0">
                   PS
                 </div>
                 <div className="pr-1 text-left">
-                  <p className="text-[12px] font-extrabold text-[#0B1B2B] leading-none mb-0.5">
+                  <p className="text-[11px] font-extrabold text-[#0B1B2B] leading-none mb-1">
                     Priya Sharma
                   </p>
-                  <p className="text-[10px] font-medium text-slate-500 leading-none">
-                    Staff Eng @ Stri
+                  <p className="text-[9px] font-medium text-slate-500 leading-none">
+                    Staff Eng @ Stripe · Class of '17
                   </p>
                 </div>
               </div>
@@ -65,11 +73,11 @@ export default function LoginPage() {
           </div>
 
           {/* Bottom Heading & Subtitle */}
-          <div className="z-10">
-            <h2 className="text-xl lg:text-2xl font-extrabold text-[#0F2231] tracking-tight leading-snug">
-              Your Next Chapter Starts With a Connection.
+          <div className="z-10 pt-1">
+            <h2 className="text-2xl lg:text-[27px] font-black text-[#0B1B2B] tracking-tight leading-[1.15]">
+              Your Next Chapter Starts With a<br />Connection.
             </h2>
-            <p className="text-slate-700/90 text-xs mt-1.5 leading-relaxed">
+            <p className="text-[#20445C] text-xs font-medium mt-2 leading-relaxed">
               Connect with graduates, discover mentors, and unlock exclusive career opportunities within your trusted university community.
             </p>
           </div>
@@ -78,18 +86,20 @@ export default function LoginPage() {
         {/* Right Form Panel */}
         <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
           {/* Logo Header */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-[#0F2231] flex items-center justify-center text-white">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-[#0B1B2B] flex items-center justify-center text-white">
               <GraduationCap className="w-4 h-4" />
             </div>
-            <span className="text-lg font-bold text-[#0F2231] tracking-tight">AlumniLink</span>
+            <span className="text-xl font-bold tracking-tight text-[#0B1B2B]">
+              Alumni<span className="text-[#FF7E86]">Link</span>
+            </span>
           </div>
 
           {/* Header Texts */}
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#0B1B2B] tracking-tight">
             Welcome Back
           </h1>
-          <p className="text-slate-500 text-xs mt-0.5 mb-5">
+          <p className="text-slate-500 text-xs mt-1 mb-5">
             Sign in to reconnect with your university network.
           </p>
 
@@ -99,7 +109,7 @@ export default function LoginPage() {
             <div>
               <label 
                 htmlFor="email" 
-                className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
               >
                 University or Work Email
               </label>
@@ -110,7 +120,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@alumni.edu"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F2231] focus:border-transparent transition duration-200"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1B2B] focus:border-transparent transition duration-200"
               />
             </div>
 
@@ -118,7 +128,7 @@ export default function LoginPage() {
             <div>
               <label 
                 htmlFor="password" 
-                className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
               >
                 Password
               </label>
@@ -130,7 +140,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F2231] focus:border-transparent transition duration-200 pr-10"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1B2B] focus:border-transparent transition duration-200 pr-10"
                 />
                 <button
                   type="button"
@@ -154,13 +164,13 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 text-[#0F2231] focus:ring-[#0F2231]"
+                  className="w-3.5 h-3.5 rounded border-slate-300 text-[#0B1B2B] focus:ring-[#0B1B2B]"
                 />
                 Remember me
               </label>
               <a 
                 href="#forgot-password" 
-                className="font-semibold text-slate-600 hover:text-slate-900 transition"
+                className="font-semibold text-slate-600 hover:text-slate-900 transition text-[11px]"
               >
                 Forgot password?
               </a>
@@ -169,7 +179,7 @@ export default function LoginPage() {
             {/* Primary Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-[#0F2231] hover:bg-[#18354c] text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow transition duration-200 flex items-center justify-center gap-2 group cursor-pointer"
+              className="w-full py-3 px-4 bg-[#0B1B2B] hover:bg-[#152e45] text-white font-semibold text-xs rounded-xl shadow-sm hover:shadow transition duration-200 flex items-center justify-center gap-2 group cursor-pointer"
             >
               Sign In
               <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
@@ -179,17 +189,17 @@ export default function LoginPage() {
           {/* Or Divider */}
           <div className="relative my-4 text-center">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
+              <div className="w-full border-t border-slate-100"></div>
             </div>
             <span className="relative bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               Or continue with
             </span>
           </div>
 
-          {/* Social Sign-In: Google */}
+          {/* Social Sign-In: Google (matching the rounded pill style) */}
           <button
             type="button"
-            className="w-full py-2.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
+            className="w-full py-2.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer shadow-sm"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
