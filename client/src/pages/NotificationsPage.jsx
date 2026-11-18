@@ -27,6 +27,7 @@ import {
   ChevronsUpDown,
   Filter
 } from 'lucide-react';
+import { AlumniLinkLogoMark } from '../components/AlumniLinkLogo';
 
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'unread', 'connections', 'mentorship', 'messages', 'opportunities'
@@ -173,21 +174,7 @@ export default function NotificationsPage() {
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 px-2">
             {/* AlumniLink Connected Nodes Icon */}
-            <div className="w-8 h-8 flex items-center justify-center text-[#0B1B2B]">
-              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none">
-                <circle cx="5" cy="5" r="2.5" fill="#0B1B2B" />
-                <circle cx="19" cy="5" r="2.5" fill="#0B1B2B" />
-                <circle cx="5" cy="19" r="2.5" fill="#0B1B2B" />
-                <circle cx="19" cy="19" r="2.5" fill="#0B1B2B" />
-                <circle cx="12" cy="12" r="2.2" fill="#0B1B2B" />
-                <line x1="6.5" y1="6.5" x2="10.5" y2="10.5" stroke="#0B1B2B" strokeWidth="1.8" />
-                <line x1="17.5" y1="6.5" x2="13.5" y2="10.5" stroke="#0B1B2B" strokeWidth="1.8" />
-                <line x1="6.5" y1="17.5" x2="10.5" y2="13.5" stroke="#0B1B2B" strokeWidth="1.8" />
-                <line x1="17.5" y1="17.5" x2="13.5" y2="13.5" stroke="#0B1B2B" strokeWidth="1.8" />
-                <line x1="7.5" y1="5" x2="16.5" y2="5" stroke="#0B1B2B" strokeWidth="1.5" />
-                <line x1="5" y1="7.5" x2="5" y2="16.5" stroke="#0B1B2B" strokeWidth="1.5" />
-              </svg>
-            </div>
+            <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
             <div>
               <span className="text-[17px] font-extrabold tracking-tight text-[#0B1B2B] block leading-tight">
                 AlumniLink

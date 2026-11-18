@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 import studentsImg from '../assets/auth-students.jpg';
+import { AlumniLinkLogoMark } from '../components/AlumniLinkLogo';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -92,9 +93,7 @@ export default function RegisterPage() {
         <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
           {/* Logo Header */}
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-[#0B1B2B] flex items-center justify-center text-white">
-              <GraduationCap className="w-4 h-4" />
-            </div>
+            <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
             <span className="text-xl font-bold tracking-tight text-[#0B1B2B]">
               Alumni<span className="text-[#FF7E86]">Link</span>
             </span>

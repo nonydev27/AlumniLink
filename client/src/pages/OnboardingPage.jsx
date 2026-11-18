@@ -11,6 +11,7 @@ import {
   TrendingUp, 
   User
 } from 'lucide-react';
+import { AlumniLinkLogoMark } from '../components/AlumniLinkLogo';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -41,12 +42,7 @@ export default function OnboardingPage() {
       <header className="bg-white border-b border-slate-100 px-6 sm:px-12 py-4 flex items-center justify-between sticky top-0 z-30">
         {/* Brand Logo & Pill */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#0B1B2B] flex items-center justify-center text-white">
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-4 bg-white rounded-full"></span>
-              <span className="w-1.5 h-4 bg-[#FF7E86] rounded-full"></span>
-            </div>
-          </div>
+          <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
           <span className="text-lg font-bold tracking-tight text-[#0B1B2B]">
             Alumni<span className="text-[#FF7E86]">Link</span>
           </span>

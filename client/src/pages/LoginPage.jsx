@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GraduationCap, ShieldCheck, Star } from 'lucide-react';
 import loginAlumnusImg from '../assets/login-alumnus.jpg';
+import { AlumniLinkLogoMark } from '../components/AlumniLinkLogo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -87,9 +88,7 @@ export default function LoginPage() {
         <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
           {/* Logo Header */}
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-[#0B1B2B] flex items-center justify-center text-white">
-              <GraduationCap className="w-4 h-4" />
-            </div>
+            <AlumniLinkLogoMark className="w-7 h-7 text-[#0B1B2B]" />
             <span className="text-xl font-bold tracking-tight text-[#0B1B2B]">
               Alumni<span className="text-[#FF7E86]">Link</span>
             </span>
