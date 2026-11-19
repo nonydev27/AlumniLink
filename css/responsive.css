@@ -1,0 +1,143 @@
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width: 14.5rem;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(10rem, 1fr) auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    width: min(82vw, 18rem);
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+  }
+
+  body.menu-open {
+    overflow: hidden;
+  }
+
+  body.menu-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    z-index: 25;
+    inset: 0;
+    background: rgba(0, 32, 64, 0.45);
+  }
+
+  body.menu-open .sidebar-backdrop {
+    display: block;
+  }
+
+  .app-main {
+    padding-bottom: 4.75rem;
+  }
+
+  .topbar {
+    grid-template-columns: auto minmax(8rem, 1fr) auto;
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+  }
+
+  .topbar__menu-button {
+    display: inline-flex;
+  }
+
+  .topbar__actions .topbar__profile {
+    display: none;
+  }
+
+  .topbar__search {
+    min-width: 0;
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+
+  .mobile-nav {
+    position: fixed;
+    z-index: 20;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    min-height: 4.75rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-white);
+    box-shadow: 0 -4px 18px rgba(0, 32, 64, 0.08);
+  }
+
+  .mobile-nav__link {
+    display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    text-decoration: none;
+  }
+
+  .mobile-nav__link svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .mobile-nav__link[aria-current="page"] {
+    color: var(--color-brand-navy-900);
+  }
+
+  .dialog__footer {
+    flex-direction: column-reverse;
+  }
+
+  .dialog__footer .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 479px) {
+  :root {
+    --font-size-3xl: 1.75rem;
+  }
+
+  .topbar {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .topbar__search .search {
+    padding-inline: var(--space-2);
+  }
+
+  .topbar__search .search input {
+    min-width: 0;
+  }
+
+  .topbar__actions {
+    gap: 0;
+  }
+
+  .tabs {
+    scroll-snap-type: x proximity;
+  }
+
+  .tab {
+    scroll-snap-align: start;
+  }
+}

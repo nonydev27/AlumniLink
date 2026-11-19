@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AlumniLink shared frontend foundation preview">
+    <title>AlumniLink | Shared Frontend Foundation</title>
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/layout.css">
+    <link rel="stylesheet" href="./css/responsive.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="app-shell">
+      <aside class="sidebar" id="primary-navigation" data-sidebar aria-label="Primary navigation">
+        <div class="sidebar__header">
+          <a class="brand" href="./index.html" aria-label="AlumniLink home">
+            <span class="brand__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"></path>
+                <path d="M6.5 10v5.5c0 1.7 2.5 3.5 5.5 3.5s5.5-1.8 5.5-3.5V10"></path>
+              </svg>
+            </span>
+            <span>Alumni<span class="brand__accent">Link</span></span>
+          </a>
+        </div>
+
+        <nav class="sidebar__nav" aria-label="Authenticated pages">
+          <ul class="nav-list">
+            <li>
+              <a class="nav-link" href="./pages/dashboard.html" data-nav-link aria-current="page">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                </svg>
+                <span>Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10" cy="10" r="6"></circle>
+                  <path d="m15 15 5 5"></path>
+                </svg>
+                <span>Explore Directory</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21s-7-4.2-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.8-7 10-7 10Z"></path>
+                </svg>
+                <span>Mentorship</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+                  <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"></path>
+                </svg>
+                <span>Opportunities</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="8" cy="8" r="3"></circle>
+                  <circle cx="17" cy="9" r="2"></circle>
+                  <path d="M3 20c.4-4 2.2-6 5-6s4.6 2 5 6M14 14c3.5 0 5.2 2 5.5 5"></path>
+                </svg>
+                <span>My Connections</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"></path>
+                </svg>
+                <span>Messages</span>
+                <span class="nav-link__badge" aria-label="3 unread messages">3</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                  <path d="M10 21h4"></path>
+                </svg>
+                <span>Notifications</span>
+                <span class="nav-link__badge" aria-label="5 unread notifications">5</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M4 21c.7-5 3.4-7 8-7s7.3 2 8 7"></path>
+                </svg>
+                <span>My Profile</span>
+              </a>
+            </li>
+            <li>
+              <a class="nav-link" href="#" data-nav-link>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-2.6V20a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L7.6 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 6.4 14H6.2v-2.6h.2A1.7 1.7 0 0 0 8 10.4a1.7 1.7 0 0 0-.3-1.9L7.6 8l1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 12.4 5v-.2H15V5a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v2.6H21a1.7 1.7 0 0 0-1.6 1.4Z"></path>
+                </svg>
+                <span>Settings</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="sidebar__footer">
+          <button class="user-control" type="button" aria-label="Open Alex Morgan account menu">
+            <span class="avatar" aria-hidden="true">AM</span>
+            <span class="user-control__text">
+              <span class="user-control__name">Alex Morgan</span>
+              <span class="user-control__meta">Final year · KNUST</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <button class="sidebar-backdrop" type="button" aria-label="Close navigation" data-sidebar-backdrop></button>
+
+      <div class="app-main">
+        <header class="topbar">
+          <button class="icon-button topbar__menu-button" type="button" aria-label="Open navigation" aria-controls="primary-navigation" aria-expanded="false" data-menu-button>
+            <span class="visually-hidden" data-menu-label>Open navigation</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+
+          <label class="search topbar__search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10.5" cy="10.5" r="6.5"></circle>
+              <path d="m15.5 15.5 5 5"></path>
+            </svg>
+            <span class="visually-hidden">Search alumni, mentors or opportunities</span>
+            <input type="search" placeholder="Search alumni, mentors or opportunities">
+          </label>
+
+          <div class="topbar__actions">
+            <button class="icon-button notification-button" type="button" aria-label="Notifications, 5 unread">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                <path d="M10 21h4"></path>
+              </svg>
+            </button>
+            <button class="icon-button topbar__profile" type="button" aria-label="Open Alex Morgan profile menu">
+              <span class="avatar" aria-hidden="true">AM</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="content" id="main-content" tabindex="-1">
+          <section class="page-section" aria-labelledby="foundation-title">
+            <p class="status-badge status-badge--success">Shared foundation preview</p>
+            <h1 id="foundation-title">AlumniLink interface foundation</h1>
+            <p class="text-muted">
+              This root-level preview demonstrates the shared authenticated layout and reusable components.
+              It is not an implementation of a dashboard page or a backend-connected feature.
+            </p>
+          </section>
+
+          <section class="page-section" aria-labelledby="component-preview-title">
+            <div class="card">
+              <div class="card__header">
+                <h2 id="component-preview-title">Reusable component preview</h2>
+              </div>
+              <div class="card__body">
+                <div class="tabs" role="tablist" aria-label="Foundation examples" data-tab-list>
+                  <button class="tab" id="tab-actions" role="tab" aria-selected="true" aria-controls="panel-actions" type="button">Actions</button>
+                  <button class="tab" id="tab-fields" role="tab" aria-selected="false" aria-controls="panel-fields" type="button">Fields</button>
+                  <button class="tab" id="tab-status" role="tab" aria-selected="false" aria-controls="panel-status" type="button">Status</button>
+                </div>
+
+                <div id="panel-actions" role="tabpanel" aria-labelledby="tab-actions" style="padding-top: var(--space-5);">
+                  <button class="button button--primary" type="button" data-open-dialog>Open modal preview</button>
+                  <button class="button button--secondary" type="button">Secondary action</button>
+                  <button class="button button--coral" type="button">Accent action</button>
+                  <button class="icon-button" type="button" aria-label="Example icon action">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <div id="panel-fields" role="tabpanel" aria-labelledby="tab-fields" hidden style="padding-top: var(--space-5);">
+                  <div class="field">
+                    <label for="example-search">Search term</label>
+                    <input id="example-search" type="search" placeholder="Enter a name or skill">
+                  </div>
+                </div>
+
+                <div id="panel-status" role="tabpanel" aria-labelledby="tab-status" hidden style="padding-top: var(--space-5);">
+                  <span class="status-badge status-badge--success">Verified</span>
+                  <span class="status-badge status-badge--warning">Action needed</span>
+                  <span class="status-badge status-badge--danger">Unavailable</span>
+                  <span class="status-badge status-badge--neutral">Draft</span>
+                </div>
+              </div>
+              <div class="card__footer">
+                <button class="filter-chip" type="button" aria-pressed="false" data-filter-chip>Computer Science</button>
+                <button class="filter-chip" type="button" aria-pressed="true" data-filter-chip>Mentors</button>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <nav class="mobile-nav" aria-label="Mobile authenticated navigation">
+          <a class="mobile-nav__link" href="#" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+              <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            </svg>
+            <span>Home</span>
+          </a>
+          <a class="mobile-nav__link" href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10" cy="10" r="6"></circle>
+              <path d="m15 15 5 5"></path>
+            </svg>
+            <span>Explore</span>
+          </a>
+          <a class="mobile-nav__link" href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21s-7-4.2-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.8-7 10-7 10Z"></path>
+            </svg>
+            <span>Mentors</span>
+          </a>
+          <a class="mobile-nav__link" href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"></path>
+            </svg>
+            <span>Messages</span>
+          </a>
+          <a class="mobile-nav__link" href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"></circle>
+              <path d="M4 21c.7-5 3.4-7 8-7s7.3 2 8 7"></path>
+            </svg>
+            <span>Profile</span>
+          </a>
+        </nav>
+      </div>
+    </div>
+
+    <dialog aria-labelledby="foundation-dialog-title" data-foundation-dialog>
+      <div class="dialog__header">
+        <h2 id="foundation-dialog-title">Modal preview</h2>
+        <button class="icon-button" type="button" aria-label="Close modal" data-close-dialog>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog__body">
+        <p>This shared modal uses the established card, border, radius and shadow styles.</p>
+      </div>
+      <div class="dialog__footer">
+        <button class="button button--secondary" type="button" data-close-dialog>Cancel</button>
+        <button class="button button--primary" type="button" data-close-dialog>Close</button>
+      </div>
+    </dialog>
+
+    <script src="./js/app.js"></script>
+  </body>
+</html>

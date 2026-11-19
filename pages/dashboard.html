@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AlumniLink student dashboard preview">
+    <title>Dashboard | AlumniLink</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="app-shell">
+      <aside class="sidebar" id="primary-navigation" data-sidebar aria-label="Primary navigation">
+        <div class="sidebar__header">
+          <a class="brand" href="../index.html" aria-label="AlumniLink home">
+            <span class="brand__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"></path>
+                <path d="M6.5 10v5.5c0 1.7 2.5 3.5 5.5 3.5s5.5-1.8 5.5-3.5V10"></path>
+              </svg>
+            </span>
+            <span>Alumni<span class="brand__accent">Link</span></span>
+          </a>
+        </div>
+
+        <nav class="sidebar__nav" aria-label="Authenticated pages">
+          <ul class="nav-list">
+            <li><a class="nav-link" href="./dashboard.html" data-nav-link aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg><span>Dashboard</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"></circle><path d="m15 15 5 5"></path></svg><span>Explore Directory</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.2-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.8-7 10-7 10Z"></path></svg><span>Mentorship</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"></path></svg><span>Opportunities</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"></circle><circle cx="17" cy="9" r="2"></circle><path d="M3 20c.4-4 2.2-6 5-6s4.6 2 5 6M14 14c3.5 0 5.2 2 5.5 5"></path></svg><span>My Connections</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"></path></svg><span>Messages</span><span class="nav-link__badge" aria-label="3 unread messages">3</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span>Notifications</span><span class="nav-link__badge" aria-label="5 unread notifications">5</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c.7-5 3.4-7 8-7s7.3 2 8 7"></path></svg><span>My Profile</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-2.6V20a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L7.6 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 6.4 14H6.2v-2.6h.2A1.7 1.7 0 0 0 8 10.4a1.7 1.7 0 0 0-.3-1.9L7.6 8l1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 12.4 5v-.2H15V5a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v2.6H21a1.7 1.7 0 0 0-1.6 1.4Z"></path></svg><span>Settings</span></a></li>
+          </ul>
+        </nav>
+
+        <div class="sidebar__footer">
+          <button class="user-control" type="button" aria-label="Account preview for Alex Morgan" data-demo-action data-dialog-title="Account menu preview" data-dialog-message="Account controls are not connected in this frontend preview.">
+            <span class="avatar" aria-hidden="true">AM</span>
+            <span class="user-control__text">
+              <span class="user-control__name">Alex Morgan</span>
+              <span class="user-control__meta">Final Year CS · Oxford</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <button class="sidebar-backdrop" type="button" aria-label="Close navigation" data-sidebar-backdrop></button>
+
+      <div class="app-main">
+        <header class="topbar">
+          <button class="icon-button topbar__menu-button" type="button" aria-label="Open navigation" aria-controls="primary-navigation" aria-expanded="false" data-menu-button>
+            <span class="visually-hidden" data-menu-label>Open navigation</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <label class="search topbar__search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+            <span class="visually-hidden">Search alumni, mentors, skills or opportunities</span>
+            <input type="search" placeholder="Search alumni, mentors, skills or opportunities..." data-dashboard-search>
+          </label>
+          <div class="topbar__actions">
+            <span class="role-badge"><span class="role-badge__dot" aria-hidden="true">●</span><span data-role-badge-label>Student View (Oxford)</span></span>
+            <button class="icon-button notification-button" type="button" aria-label="Notifications, 5 unread" data-demo-action data-dialog-title="Notifications preview" data-dialog-message="Notifications are shown as illustrative sample content and are not connected to an account.">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg>
+            </button>
+            <button class="icon-button topbar__profile" type="button" aria-label="Open Alex Morgan profile preview" data-demo-action data-dialog-title="Profile preview" data-dialog-message="Profile and account settings are not implemented in this phase.">
+              <span class="avatar" aria-hidden="true">AM</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="content dashboard" id="main-content" tabindex="-1">
+          <p class="sample-notice"><strong>Preview data:</strong> all people, counts and activity on this page are illustrative, not live.</p>
+
+          <section class="dashboard-welcome" aria-labelledby="dashboard-title">
+            <div class="welcome-copy">
+              <h1 id="dashboard-title">Good morning,<br>Alex <span aria-label="waving hand">👋</span></h1>
+              <p>Your next opportunity could start with a connection. Let’s make it happen.</p>
+            </div>
+            <div class="welcome-actions">
+              <div class="view-switch" role="group" aria-label="Preview role">
+                <button type="button" class="view-switch__button is-selected" aria-pressed="true" data-role-switch="Student View">● Student View</button>
+                <button type="button" class="view-switch__button" aria-pressed="false" data-role-switch="Alumni View">Alumni View</button>
+              </div>
+              <p class="role-context" data-role-context>Oxford ’25 · Mathematical, Physical &amp; Life Sciences</p>
+              <button class="button button--primary" type="button" data-demo-action data-dialog-title="Mentor session preview" data-dialog-message="This preview does not send a request or schedule a session. No mentor has been contacted.">
+                <span aria-hidden="true">＋</span> Request Mentor Session
+              </button>
+              <button class="button button--secondary" type="button" data-demo-action data-dialog-title="Directory preview" data-dialog-message="The Alumni Directory is not part of this implementation phase.">
+                <span aria-hidden="true">⌕</span> Browse Directory
+              </button>
+            </div>
+          </section>
+
+          <section class="stats-grid" aria-label="Dashboard summary">
+            <article class="card stat-card">
+              <div class="stat-card__top"><h2>My Connections</h2><span class="stat-icon stat-icon--blue" aria-hidden="true">⌘</span></div>
+              <p class="stat-value">18 <span class="stat-change">+3 this week</span></p>
+              <div class="stat-card__bottom"><span class="avatar-stack" aria-label="Illustrative connection avatars"><span>AM</span><span>RO</span><span>JS</span><span>+15</span></span><button class="text-action" type="button" data-demo-action data-dialog-title="Connections preview" data-dialog-message="Connection records are illustrative and are not loaded from a live account.">View all <span aria-hidden="true">›</span></button></div>
+            </article>
+            <article class="card stat-card">
+              <div class="stat-card__top"><h2>Profile Views</h2><span class="stat-icon stat-icon--blue" aria-hidden="true">◉</span></div>
+              <p class="stat-value">142 <span class="stat-change">+24% vs last week</span></p>
+              <div class="stat-card__bottom"><span class="mini-bars" aria-label="Illustrative activity trend"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="text-muted">High activity</span></div>
+            </article>
+            <article class="card stat-card">
+              <div class="stat-card__top"><h2>Mentorship</h2><span class="stat-icon stat-icon--coral" aria-hidden="true">♧</span></div>
+              <p class="stat-value">2 <span class="stat-detail">Active invites</span></p>
+              <div class="stat-card__bottom"><span class="status-badge status-badge--warning">1 Pending Match</span><button class="text-action text-action--coral" type="button" data-demo-action data-dialog-title="Mentorship preview" data-dialog-message="Mentorship requests and matches shown here are illustrative only.">Review <span aria-hidden="true">›</span></button></div>
+            </article>
+            <article class="card stat-card">
+              <div class="stat-card__top"><h2>Opportunities</h2><span class="stat-icon stat-icon--blue" aria-hidden="true">▱</span></div>
+              <p class="stat-value">38 <span class="stat-detail">Matching CS degree</span></p>
+              <div class="stat-card__bottom"><span class="stat-change">6 new posted today</span><button class="text-action" type="button" data-demo-action data-dialog-title="Opportunities preview" data-dialog-message="Opportunity counts are illustrative. No live opportunities are loaded.">Explore <span aria-hidden="true">›</span></button></div>
+            </article>
+          </section>
+
+          <section class="card completion-card" aria-labelledby="completion-title">
+            <span class="completion-icon" aria-hidden="true">♢</span>
+            <div class="completion-content">
+              <div class="completion-heading">
+                <h2 id="completion-title">Your profile is 75% complete</h2>
+                <span class="step-badge">Step 3 of 5</span>
+              </div>
+              <p>A complete profile helps other members discover and connect with you. Add your GitHub or personal portfolio link to reach 100%.</p>
+              <div class="progress-track" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="75">
+                <span></span>
+              </div>
+            </div>
+            <button class="text-action dismiss-completion" type="button" data-dismiss-completion>Dismiss</button>
+            <button class="button button--coral" type="button" data-demo-action data-dialog-title="Complete profile preview" data-dialog-message="Profile editing is not implemented in this phase. No profile changes will be saved.">Complete Profile <span aria-hidden="true">→</span></button>
+          </section>
+          <p class="dashboard-feedback" role="status" aria-live="polite" data-dashboard-feedback></p>
+
+          <div class="dashboard-columns">
+            <div class="dashboard-main-column">
+              <section class="dashboard-section mentor-section" aria-labelledby="mentors-title">
+                <div class="section-heading">
+                  <div>
+                    <h2 id="mentors-title">People You Should Know <span class="heading-dot" aria-hidden="true">•</span></h2>
+                    <p>Based on your interests in UI/UX Design, Software Engineering, and Oxford Alumni in London</p>
+                    <span class="ai-label"><span aria-hidden="true">✦</span> AI suggestion · illustrative preview</span>
+                  </div>
+                  <button class="text-action section-link" type="button" data-demo-action data-dialog-title="Mentor recommendations preview" data-dialog-message="These illustrative recommendations are not generated from a live profile or matching service.">View All (42) <span aria-hidden="true">→</span></button>
+                </div>
+
+                <div class="mentor-grid" data-mentor-list>
+                  <article class="card mentor-card" data-searchable data-search-text="Amara Okafor Product Lead Spotify London Oxford Computer Science product strategy UX design seed mentorship">
+                    <div class="mentor-photo mentor-photo--one" role="img" aria-label="Illustrative profile placeholder for Amara Okafor"><span>AO</span><span class="match-badge">98% match</span></div>
+                    <div class="mentor-card__body">
+                      <h3>Amara Okafor                       <span class="verified-mark" role="img" aria-label="Verified alumni">✓</span></h3>
+                      <p class="mentor-role">Product Lead at Spotify</p>
+                      <p class="mentor-meta">London · Oxford ’18 (Computer Science)</p>
+                      <div class="tag-list"><span>Product Strategy</span><span>UX Design</span><span>Seed Mentorship</span></div>
+                      <details class="why-match">
+                        <summary>Why this suggestion?</summary>
+                        <p>AI suggestion: Amara may be relevant because you listed product design interests and she works in product. This is not a guarantee of fit or a response.</p>
+                      </details>
+                      <div class="mentor-card__footer">
+                        <span class="availability"><span aria-hidden="true">●</span> Open to Coffee Chats</span>
+                        <div class="mentor-card__actions">
+                          <button class="button button--primary" type="button" data-demo-action data-dialog-title="Profile preview" data-dialog-message="Amara Okafor’s illustrative profile is not connected to a live account.">View Profile</button>
+                          <button class="button button--secondary" type="button" aria-label="Dismiss AI suggestion for Amara Okafor" data-dismiss-mentor>Dismiss</button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="card mentor-card" data-searchable data-search-text="Rohan Mehta Investment Analyst McKinsey London Cambridge Economics Computer Science Fintech Consulting CV Review">
+                    <div class="mentor-photo mentor-photo--two" role="img" aria-label="Illustrative profile placeholder for Rohan Mehta"><span>RM</span><span class="match-badge">94% match</span></div>
+                    <div class="mentor-card__body">
+                      <h3>Rohan Mehta                       <span class="verified-mark" role="img" aria-label="Verified alumni">✓</span></h3>
+                      <p class="mentor-role">Investment Analyst at McKinsey</p>
+                      <p class="mentor-meta">London · Cambridge ’19 (Econ &amp; CS)</p>
+                      <div class="tag-list"><span>Fintech</span><span>Consulting</span><span>CV Review</span></div>
+                      <details class="why-match">
+                        <summary>Why this suggestion?</summary>
+                        <p>AI suggestion: Rohan may be relevant because your profile includes Computer Science and career interests related to technology. This suggestion may not match your needs.</p>
+                      </details>
+                      <div class="mentor-card__footer">
+                        <span class="availability"><span aria-hidden="true">●</span> Active this week</span>
+                        <div class="mentor-card__actions">
+                          <button class="button button--primary" type="button" data-demo-action data-dialog-title="Profile preview" data-dialog-message="Rohan Mehta’s illustrative profile is not connected to a live account.">View Profile</button>
+                          <button class="button button--secondary" type="button" aria-label="Dismiss AI suggestion for Rohan Mehta" data-dismiss-mentor>Dismiss</button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="card mentor-card" data-searchable data-search-text="James Lee Dr Senior Research Fellow Alan Turing Institute Oxford AI ML Research Postgrad Advice">
+                    <div class="mentor-photo mentor-photo--three" role="img" aria-label="Illustrative profile placeholder for Dr. James Lee"><span>JL</span><span class="match-badge">91% match</span></div>
+                    <div class="mentor-card__body">
+                      <h3>Dr. James Lee                       <span class="verified-mark" role="img" aria-label="Verified alumni">✓</span></h3>
+                      <p class="mentor-role">Senior Research Fellow</p>
+                      <p class="mentor-meta">Alan Turing Inst. · Oxford ’14 (DPhil)</p>
+                      <div class="tag-list"><span>AI / ML</span><span>Research</span><span>Postgrad Advice</span></div>
+                      <details class="why-match">
+                        <summary>Why this suggestion?</summary>
+                        <p>AI suggestion: Dr. Lee may be relevant because your interests include software engineering and research. A match score does not guarantee compatibility or a reply.</p>
+                      </details>
+                      <div class="mentor-card__footer">
+                        <span class="availability"><span aria-hidden="true">●</span> Available for Thesis</span>
+                        <div class="mentor-card__actions">
+                          <button class="button button--primary" type="button" data-demo-action data-dialog-title="Profile preview" data-dialog-message="Dr. James Lee’s illustrative profile is not connected to a live account.">View Profile</button>
+                          <button class="button button--secondary" type="button" aria-label="Dismiss AI suggestion for Dr. James Lee" data-dismiss-mentor>Dismiss</button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+                <p class="empty-message" hidden tabindex="-1" data-no-mentors>No mentor suggestions match this search.</p>
+                <div class="recommendation-feedback" role="group" aria-label="AI recommendation feedback, preview only">
+                  <span>Was this recommendation section helpful?</span>
+                  <button class="button button--secondary" type="button" data-ai-feedback="yes">Yes</button>
+                  <button class="button button--secondary" type="button" data-ai-feedback="no">No</button>
+                </div>
+              </section>
+
+              <section class="dashboard-section opportunities-section" aria-labelledby="opportunities-title">
+                <div class="section-heading">
+                  <div>
+                    <h2 id="opportunities-title">Opportunities For You <span class="referral-badge">Direct Alumni Referrals</span></h2>
+                    <p>Hand-picked roles shared directly by alumni recruiters</p>
+                  </div>
+                  <button class="text-action section-link" type="button" data-demo-action data-dialog-title="Opportunities preview" data-dialog-message="These sample listings are not live and applications cannot be submitted from this preview.">Explore All Opportunities (38) <span aria-hidden="true">→</span></button>
+                </div>
+
+                <div class="opportunity-list">
+                  <article class="card opportunity-card" data-searchable data-search-text="Associate Product Manager Intern Summer Spotify Hybrid London Deadline 15 May 2025 Amara Okafor Oxford Alumni portfolio reviews">
+                    <div class="company-mark" aria-hidden="true">Sp</div>
+                    <div class="opportunity-copy">
+                      <h3>Associate Product Manager Intern (Summer)</h3>
+                      <span class="job-type">Internship</span>
+                      <p><strong>Spotify</strong> <span aria-hidden="true">·</span> Hybrid (London) <span aria-hidden="true">·</span> Deadline: 15 May 2025</p>
+                      <p class="shared-by">Shared by <strong>Amara Okafor</strong> (Oxford ’18 Alum) · Accepting portfolio reviews</p>
+                    </div>
+                    <button class="save-opportunity" type="button" aria-pressed="false" aria-label="Save Associate Product Manager Intern opportunity" data-save-opportunity>Save</button>
+                    <button class="button button--secondary opportunity-details" type="button" data-demo-action data-dialog-title="Opportunity preview" data-dialog-message="This illustrative Spotify role is not a live vacancy. No application or referral can be made from this preview.">View Details</button>
+                  </article>
+
+                  <article class="card opportunity-card" data-searchable data-search-text="Graduate Software Engineer Cloud Google DeepMind London Deadline 30 May 2025 Oxford Alumni Talent Circle fast-track screening">
+                    <div class="company-mark" aria-hidden="true">DM</div>
+                    <div class="opportunity-copy">
+                      <h3>Graduate Software Engineer (Cloud &amp; Infrastructure)</h3>
+                      <span class="job-type">New Graduate</span>
+                      <p><strong>Google DeepMind</strong> <span aria-hidden="true">·</span> London <span aria-hidden="true">·</span> Deadline: 30 May 2025</p>
+                      <p class="shared-by">Shared by <strong>Oxford Alumni Talent Circle</strong> · Fast-track screening enabled</p>
+                    </div>
+                    <button class="save-opportunity" type="button" aria-pressed="false" aria-label="Save Graduate Software Engineer opportunity" data-save-opportunity>Save</button>
+                    <button class="button button--secondary opportunity-details" type="button" data-demo-action data-dialog-title="Opportunity preview" data-dialog-message="This illustrative Google DeepMind role is not a live vacancy. No application or referral can be made from this preview.">View Details</button>
+                  </article>
+
+                  <article class="card opportunity-card" data-searchable data-search-text="Junior Quantitative Analyst Jane Street London In-office Deadline 10 June 2025 Rohan Mehta referrals Math CS finalists">
+                    <div class="company-mark" aria-hidden="true">JS</div>
+                    <div class="opportunity-copy">
+                      <h3>Junior Quantitative Analyst</h3>
+                      <span class="job-type job-type--neutral">Full-Time</span>
+                      <p><strong>Jane Street</strong> <span aria-hidden="true">·</span> London / In-office <span aria-hidden="true">·</span> Deadline: 10 June 2025</p>
+                      <p class="shared-by">Shared by <strong>Rohan Mehta</strong> (Alum) · Referrals open to Math/CS finalists</p>
+                    </div>
+                    <button class="save-opportunity" type="button" aria-pressed="false" aria-label="Save Junior Quantitative Analyst opportunity" data-save-opportunity>Save</button>
+                    <button class="button button--secondary opportunity-details" type="button" data-demo-action data-dialog-title="Opportunity preview" data-dialog-message="This illustrative Jane Street role is not a live vacancy. No application or referral can be made from this preview.">View Details</button>
+                  </article>
+                </div>
+                <p class="empty-message" hidden data-no-opportunities>No opportunities match this search.</p>
+              </section>
+            </div>
+
+            <aside class="dashboard-side-column" aria-label="Your upcoming activity">
+              <section class="card side-panel session-panel" aria-labelledby="session-title">
+                <div class="side-panel__heading"><h2 id="session-title"><span aria-hidden="true">▣</span> Upcoming Session</h2><span class="status-badge status-badge--success">Confirmed</span></div>
+                <div class="session-card">
+                  <p class="session-title">Mock Interview &amp; Portfolio Review</p>
+                  <p>with Amara Okafor (Product Lead)</p>
+                  <p class="session-meta"><span aria-hidden="true">◷</span> Tomorrow, 15:30 BST <span aria-hidden="true">·</span> <span aria-hidden="true">▣</span> 45 mins</p>
+                  <button class="button button--primary session-join" type="button" data-demo-action data-dialog-title="Call preview" data-dialog-message="No video call is connected or scheduled in this frontend preview.">Join Call via Google Meet</button>
+                  <div class="session-actions">
+                    <button class="text-action" type="button" data-demo-action data-dialog-title="Calendar preview" data-dialog-message="Calendar access is not connected. No event was added.">Add to Calendar</button>
+                    <button class="text-action" type="button" data-demo-action data-dialog-title="Reschedule preview" data-dialog-message="Rescheduling is not connected in this frontend preview. No session details were changed.">Reschedule</button>
+                  </div>
+                </div>
+              </section>
+
+              <section class="card side-panel event-panel" aria-labelledby="events-title">
+                <div class="side-panel__heading"><h2 id="events-title"><span aria-hidden="true">♧</span> Events &amp; Chapters</h2><button class="text-action" type="button" data-demo-action data-dialog-title="Events preview" data-dialog-message="Chapter and event listings are illustrative sample content.">Explore</button></div>
+                <article class="event-card">
+                  <span class="event-kicker">London Chapter Mixer</span>
+                  <h3>Tech &amp; AI Alumni Mixer — London Chapter</h3>
+                  <p>May 18, 2025 · 18:30 BST · King’s Cross, London</p>
+                  <div class="event-card__footer"><span>♧ 64 alumni attending</span><button class="button button--coral" type="button" data-demo-action data-dialog-title="Event RSVP preview" data-dialog-message="This event is illustrative. No RSVP was submitted.">RSVP</button></div>
+                </article>
+              </section>
+
+              <section class="card side-panel activity-panel" aria-labelledby="activity-title">
+                <div class="side-panel__heading"><h2 id="activity-title"><span aria-hidden="true">▤</span> Recent Activity</h2><span class="activity-indicator" aria-label="Recent activity updates"></span></div>
+                <ul class="activity-list">
+                  <li class="activity-item">
+                    <span class="activity-avatar" aria-hidden="true">KS</span>
+                    <div><p><strong>Kenji Sato</strong> (Cloud Architect at Google) viewed your profile.</p><time datetime="2025-05-18T15:05">25 mins ago</time></div>
+                  </li>
+                  <li class="activity-item">
+                    <span class="activity-avatar activity-avatar--coral" aria-hidden="true">SR</span>
+                    <div><p><strong>Dr. Sofia Reyes</strong> accepted your connection request.</p><time datetime="2025-05-18T13:05">2 hours ago</time><button class="text-action" type="button" data-demo-action data-dialog-title="Message preview" data-dialog-message="Messaging is not connected in this frontend preview.">Send Message</button></div>
+                  </li>
+                  <li class="activity-item">
+                    <span class="activity-avatar activity-avatar--blue" aria-hidden="true">+</span>
+                    <div><p>New mentor joined Oxford CS: <strong>Elena Rostova</strong> (VP Engineering at Stripe).</p><time datetime="2025-05-18T11:05">4 hours ago</time></div>
+                  </li>
+                  <li class="activity-item">
+                    <span class="activity-avatar activity-avatar--coral" aria-hidden="true">AO</span>
+                    <div><p><strong>Amara Okafor</strong> posted a new opportunity: APM Intern 2025.</p><time datetime="2025-05-17">Yesterday</time></div>
+                  </li>
+                  <li class="activity-item">
+                    <span class="activity-avatar activity-avatar--gold" aria-hidden="true">★</span>
+                    <div><p>You earned the <strong>Oxford Verified Student</strong> accreditation badge.</p><time datetime="2025-05-16">2 days ago</time></div>
+                  </li>
+                </ul>
+              </section>
+            </aside>
+          </div>
+          <p class="search-feedback visually-hidden" aria-live="polite" data-search-feedback></p>
+        </main>
+
+        <nav class="mobile-nav" aria-label="Mobile authenticated navigation">
+          <a class="mobile-nav__link" href="./dashboard.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg><span>Home</span></a>
+          <a class="mobile-nav__link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"></circle><path d="m15 15 5 5"></path></svg><span>Explore</span></a>
+          <a class="mobile-nav__link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.2-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.8-7 10-7 10Z"></path></svg><span>Mentors</span></a>
+          <a class="mobile-nav__link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"></path></svg><span>Messages</span></a>
+          <a class="mobile-nav__link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c.7-5 3.4-7 8-7s7.3 2 8 7"></path></svg><span>Profile</span></a>
+        </nav>
+      </div>
+    </div>
+
+    <dialog class="dashboard-dialog" aria-labelledby="dashboard-dialog-title" aria-describedby="dashboard-dialog-message" data-dashboard-dialog>
+      <div class="dialog__header">
+        <h2 id="dashboard-dialog-title">Preview action</h2>
+        <button class="icon-button" type="button" aria-label="Close dialog" data-close-dashboard-dialog><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <div class="dialog__body"><p id="dashboard-dialog-message"></p></div>
+      <div class="dialog__footer"><button class="button button--primary" type="button" data-close-dashboard-dialog>Close</button></div>
+    </dialog>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+  </body>
+</html>
