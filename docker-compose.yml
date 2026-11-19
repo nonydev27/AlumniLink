@@ -1,0 +1,36 @@
+# Local development stack.
+#   docker compose up -d db      -> PostgreSQL only (run the API with `npm run dev`)
+#   docker compose up --build    -> PostgreSQL + API (migrations run automatically)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: alumnilink
+      POSTGRES_PASSWORD: alumnilink
+      POSTGRES_DB: alumnilink
+    ports:
+      - "5432:5432"
+    volumes:
+      - alumnilink-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alumnilink -d alumnilink"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./server
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgres://alumnilink:alumnilink@db:5432/alumnilink
+      JWT_ACCESS_SECRET: dev-only-secret-change-me-dev-only-secret-change-me
+      CLIENT_ORIGINS: http://localhost:5173
+    ports:
+      - "4000:4000"
+
+volumes:
+  alumnilink-pgdata:
