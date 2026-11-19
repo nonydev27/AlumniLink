@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore illustrative AlumniLink mentor profiles and mentorship opportunities.">
+    <title>Mentorship | AlumniLink</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="stylesheet" href="../css/mentorship.css">
+  </head>
+  <body class="mentorship-page">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="app-shell">
+      <aside class="sidebar" id="primary-navigation" data-sidebar aria-label="Primary navigation">
+        <div class="sidebar__header">
+          <a class="brand" href="../index.html" aria-label="AlumniLink home">
+            <span class="brand__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"></path>
+                <path d="M6.5 10v5.5c0 1.7 2.5 3.5 5.5 3.5s5.5-1.8 5.5-3.5V10"></path>
+              </svg>
+            </span>
+            <span>Alumni<span class="brand__accent">Link</span></span>
+          </a>
+        </div>
+
+        <nav class="sidebar__nav" aria-label="Authenticated pages">
+          <ul class="nav-list">
+            <li><a class="nav-link" href="./dashboard.html" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg><span>Dashboard</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"></circle><path d="m15 15 5 5"></path></svg><span>Explore Directory</span></a></li>
+            <li><a class="nav-link" href="./mentorship.html" data-nav-link aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.2-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.8-7 10-7 10Z"></path></svg><span>Mentorship</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"></path></svg><span>Opportunities</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"></circle><circle cx="17" cy="9" r="2"></circle><path d="M3 20c.4-4 2.2-6 5-6s4.6 2 5 6M14 14c3.5 0 5.2 2 5.5 5"></path></svg><span>My Connections</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"></path></svg><span>Messages</span><span class="nav-link__badge" aria-label="3 unread messages">3</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span>Notifications</span><span class="nav-link__badge" aria-label="5 unread notifications">5</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c.7-5 3.4-7 8-7s7.3 2 8 7"></path></svg><span>My Profile</span></a></li>
+            <li><a class="nav-link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-2.6V20a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L7.6 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 6.4 14H6.2v-2.6h.2A1.7 1.7 0 0 0 8 10.4a1.7 1.7 0 0 0-.3-1.9L7.6 8l1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 12.4 5v-.2H15V5a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v2.6H21a1.7 1.7 0 0 0-1.6 1.4Z"></path></svg><span>Settings</span></a></li>
+          </ul>
+        </nav>
+
+        <div class="sidebar__footer">
+          <button class="user-control" type="button" aria-label="Open Alex Morgan account preview" data-preview-action data-dialog-title="Account preview" data-dialog-message="Account settings are not connected in this frontend preview.">
+            <span class="avatar" aria-hidden="true">AM</span>
+            <span class="user-control__text">
+              <span class="user-control__name">Alex Morgan</span>
+              <span class="user-control__meta">Final Year CS · KNUST</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <button class="sidebar-backdrop" type="button" aria-label="Close navigation" data-sidebar-backdrop></button>
+
+      <div class="app-main">
+        <header class="topbar">
+          <button class="icon-button topbar__menu-button" type="button" aria-label="Open navigation" aria-controls="primary-navigation" aria-expanded="false" data-menu-button>
+            <span class="visually-hidden" data-menu-label>Open navigation</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <label class="search topbar__search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+            <span class="visually-hidden">Search mentor profiles on this page</span>
+            <input type="search" placeholder="Search alumni, mentors, skills or opportunities..." data-global-search>
+          </label>
+          <div class="topbar__actions">
+            <span class="role-badge"><span class="role-badge__dot" aria-hidden="true">●</span>Student View (KNUST)</span>
+            <button class="icon-button notification-button" type="button" aria-label="Notifications, 5 unread" data-preview-action data-dialog-title="Notifications preview" data-dialog-message="Notifications are illustrative and are not connected to an account.">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg>
+            </button>
+            <button class="icon-button topbar__profile" type="button" aria-label="Open Alex Morgan profile preview" data-preview-action data-dialog-title="Profile preview" data-dialog-message="This profile control is not connected to an account.">
+              <span class="avatar" aria-hidden="true">AM</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="content mentorship-content" id="main-content" tabindex="-1">
+          <p class="sample-notice"><strong>Illustrative preview:</strong> mentor profiles, counts, availability, ratings and match scores are sample data. No AI service or mentorship request is connected.</p>
+
+          <section class="mentorship-heading" aria-labelledby="mentorship-title">
+            <div>
+              <h1 id="mentorship-title">Find Your Mentor</h1>
+              <p>Connect with experienced alumni who can guide your career journey and help you achieve your professional goals.</p>
+            </div>
+            <span class="network-badge">KNUST Alumni Mentorship Network</span>
+          </section>
+
+          <form class="card search-filter-panel" data-mentor-filter-form>
+            <div class="mentor-search-row">
+              <label class="search mentor-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+                <span class="visually-hidden">Search mentors by name, profession, company or expertise</span>
+                <input id="mentor-search" type="search" placeholder="Search mentors by name, profession, company or expertise..." data-mentor-search>
+              </label>
+              <button class="button button--primary mentor-search-submit" type="submit">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+                Search Mentors
+              </button>
+            </div>
+
+            <div class="mentor-filter-grid">
+              <label class="mentor-filter">
+                <span>Study area</span>
+                <select name="programme" data-mentor-filter="programme">
+                  <option value="all">All study areas</option>
+                  <option value="computer-science">Computer Science</option>
+                  <option value="engineering">Engineering</option>
+                  <option value="business">Business</option>
+                  <option value="law">Law</option>
+                </select>
+              </label>
+              <label class="mentor-filter">
+                <span>Expertise</span>
+                <select name="expertise" data-mentor-filter="expertise">
+                  <option value="all">All expertise</option>
+                  <option value="tech-ai">Tech &amp; AI</option>
+                  <option value="business-startups">Business &amp; Startups</option>
+                  <option value="finance">Finance</option>
+                  <option value="engineering">Engineering</option>
+                  <option value="law-policy">Law &amp; Policy</option>
+                </select>
+              </label>
+              <label class="mentor-filter">
+                <span>Graduation year</span>
+                <select name="graduation" data-mentor-filter="graduation">
+                  <option value="all">All years</option>
+                  <option value="2020-plus">2020 and later</option>
+                  <option value="2015-2019">2015–2019</option>
+                  <option value="before-2015">Before 2015</option>
+                </select>
+              </label>
+              <label class="mentor-filter">
+                <span>Experience</span>
+                <select name="experience" data-mentor-filter="experience">
+                  <option value="all">Any experience</option>
+                  <option value="0-3">0–3 years</option>
+                  <option value="4-7">4–7 years</option>
+                  <option value="8-plus">8+ years</option>
+                </select>
+              </label>
+              <label class="mentor-filter">
+                <span>Location</span>
+                <select name="location" data-mentor-filter="location">
+                  <option value="all">Global</option>
+                  <option value="accra">Accra</option>
+                  <option value="kumasi">Kumasi</option>
+                  <option value="london">London</option>
+                  <option value="remote">Remote</option>
+                </select>
+              </label>
+              <label class="mentor-filter">
+                <span>Availability</span>
+                <select name="availability" data-mentor-filter="availability">
+                  <option value="all">Any time</option>
+                  <option value="week">Available this week</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="filter-panel-footer">
+              <div class="applied-filters" aria-label="Applied filters">
+                <span class="applied-filters__label">Applied filters:</span>
+                <div class="applied-filters__chips" data-applied-filters></div>
+              </div>
+              <button class="text-action reset-filters" type="reset" data-reset-filters>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>
+                Reset Filters
+              </button>
+            </div>
+          </form>
+
+          <section class="domain-section" aria-labelledby="domain-title">
+            <div class="domain-heading">
+              <h2 id="domain-title">Explore by Domain</h2>
+              <button class="text-action" type="button" aria-expanded="false" aria-controls="more-domains" data-toggle-domains>View all domains <span aria-hidden="true">›</span></button>
+            </div>
+            <div class="domain-grid" role="group" aria-label="Filter mentors by domain">
+              <button class="domain-card is-selected" type="button" aria-pressed="true" data-domain="all">
+                <span class="domain-card__icon" aria-hidden="true">✦</span><span class="domain-card__name">All domains</span><span class="domain-card__count">450</span>
+              </button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="tech-ai">
+                <span class="domain-card__icon" aria-hidden="true">⚙</span><span class="domain-card__name">Technology</span><span class="domain-card__count">142</span>
+              </button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="business-startups">
+                <span class="domain-card__icon" aria-hidden="true">↗</span><span class="domain-card__name">Business</span><span class="domain-card__count">88</span>
+              </button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="finance">
+                <span class="domain-card__icon" aria-hidden="true">⌁</span><span class="domain-card__name">Finance</span><span class="domain-card__count">64</span>
+              </button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="engineering">
+                <span class="domain-card__icon" aria-hidden="true">⚒</span><span class="domain-card__name">Engineering</span><span class="domain-card__count">52</span>
+              </button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="media-creative">
+                <span class="domain-card__icon" aria-hidden="true">◉</span><span class="domain-card__name">Media &amp; Creative</span><span class="domain-card__count">38</span>
+              </button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="law-policy">
+                <span class="domain-card__icon" aria-hidden="true">⚖</span><span class="domain-card__name">Law</span><span class="domain-card__count">31</span>
+              </button>
+            </div>
+            <div class="domain-grid domain-grid--extra" id="more-domains" hidden data-extra-domains>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="healthcare"><span class="domain-card__icon" aria-hidden="true">＋</span><span class="domain-card__name">Healthcare</span><span class="domain-card__count">29</span></button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="education"><span class="domain-card__icon" aria-hidden="true">▤</span><span class="domain-card__name">Education</span><span class="domain-card__count">24</span></button>
+              <button class="domain-card" type="button" aria-pressed="false" data-domain="public-service"><span class="domain-card__icon" aria-hidden="true">⌂</span><span class="domain-card__name">Public Service</span><span class="domain-card__count">19</span></button>
+            </div>
+          </section>
+
+          <section class="card recommendations-panel" aria-labelledby="recommendations-title">
+            <div class="recommendations-heading">
+              <div>
+                <h2 id="recommendations-title"><span class="sparkle" aria-hidden="true">✦</span> Recommended For You</h2>
+                <p>These illustrative suggestions may relate to your Computer Science track and interests in Cloud &amp; ML.</p>
+                <span class="ai-label"><span aria-hidden="true">✦</span> AI suggestion · preview only</span>
+              </div>
+              <div class="recommendations-controls">
+                <button class="text-action" type="button" data-view-all-matches>View All Matches (42) <span aria-hidden="true">→</span></button>
+                <button class="text-action" type="button" aria-label="AI suggestions are on" aria-pressed="true" data-toggle-ai-suggestions>Turn off AI suggestions</button>
+              </div>
+            </div>
+            <p class="ai-disabled-message" hidden data-ai-disabled-message>AI suggestions are turned off in this preview. Turn them back on whenever you like.</p>
+            <div class="suggestion-grid" data-suggestion-list data-ai-content>
+              <article class="suggestion-card" data-suggestion-card data-name="Kofi Boateng">
+                <div class="suggestion-avatar suggestion-avatar--blue" role="img" aria-label="Illustrative initials for Kofi Boateng">KB</div>
+                <div class="suggestion-card__copy">
+                  <span class="match-score" aria-label="Illustrative similarity score 98 percent; not a guarantee">98% match</span>
+                  <h3>Kofi Boateng</h3>
+                  <p>ML Researcher · Google Ghana</p>
+                  <span class="suggestion-meta">BSc CS ’20</span>
+                  <details class="suggestion-reason">
+                    <summary>Why this suggestion?</summary>
+                    <p>Illustrative reason: your interests include machine learning, and Kofi works in ML research. This may not be the right fit.</p>
+                    <button class="text-action report-suggestion" type="button" data-report-suggestion>Report this suggestion</button>
+                  </details>
+                  <div class="suggestion-actions">
+                    <button class="button button--primary" type="button" data-connect-suggestion>Connect</button>
+                    <button class="text-action suggestion-dismiss" type="button" data-dismiss-suggestion>Not for me</button>
+                  </div>
+                </div>
+              </article>
+              <article class="suggestion-card" data-suggestion-card data-name="Amara Okafor">
+                <div class="suggestion-avatar suggestion-avatar--coral" role="img" aria-label="Illustrative initials for Amara Okafor">AO</div>
+                <div class="suggestion-card__copy">
+                  <span class="match-score" aria-label="Illustrative similarity score 95 percent; not a guarantee">95% match</span>
+                  <h3>Amara Okafor</h3>
+                  <p>Staff Product Lead · Spotify</p>
+                  <span class="suggestion-meta">BSc CS ’17</span>
+                  <details class="suggestion-reason">
+                    <summary>Why this suggestion?</summary>
+                    <p>Illustrative reason: Amara works in product and has experience reviewing early-career portfolios. This may not match your goals.</p>
+                    <button class="text-action report-suggestion" type="button" data-report-suggestion>Report this suggestion</button>
+                  </details>
+                  <div class="suggestion-actions">
+                    <button class="button button--primary" type="button" data-connect-suggestion>Connect</button>
+                    <button class="text-action suggestion-dismiss" type="button" data-dismiss-suggestion>Not for me</button>
+                  </div>
+                </div>
+              </article>
+              <article class="suggestion-card" data-suggestion-card data-name="Kwame Mensah">
+                <div class="suggestion-avatar suggestion-avatar--navy" role="img" aria-label="Illustrative initials for Kwame Mensah">KM</div>
+                <div class="suggestion-card__copy">
+                  <span class="match-score" aria-label="Illustrative similarity score 94 percent; not a guarantee">94% match</span>
+                  <h3>Kwame Mensah</h3>
+                  <p>Senior Full-Stack · Paystack</p>
+                  <span class="suggestion-meta">BSc CS ’19</span>
+                  <details class="suggestion-reason">
+                    <summary>Why this suggestion?</summary>
+                    <p>Illustrative reason: Kwame's work spans software engineering and distributed systems. A score does not guarantee compatibility or a reply.</p>
+                    <button class="text-action report-suggestion" type="button" data-report-suggestion>Report this suggestion</button>
+                  </details>
+                  <div class="suggestion-actions">
+                    <button class="button button--primary" type="button" data-connect-suggestion>Connect</button>
+                    <button class="text-action suggestion-dismiss" type="button" data-dismiss-suggestion>Not for me</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <p class="suggestion-empty" hidden tabindex="-1" data-suggestion-empty data-ai-content>No suggestions remain in this preview.</p>
+            <div class="ai-feedback" role="group" aria-label="Give feedback on these illustrative AI suggestions" data-ai-content>
+              <span>Was this helpful?</span>
+              <button class="button button--secondary" type="button" aria-pressed="false" data-ai-feedback="yes">Yes</button>
+              <button class="button button--secondary" type="button" aria-pressed="false" data-ai-feedback="no">No</button>
+            </div>
+          </section>
+
+          <section class="available-section" id="available-mentors" aria-labelledby="available-title">
+            <div class="available-heading">
+              <div class="available-heading__title">
+                <h2 id="available-title" tabindex="-1">Available Mentors</h2>
+                <span class="result-count" data-result-count>Showing 6 illustrative mentors</span>
+              </div>
+              <div class="available-tools">
+                <label class="sort-control">
+                  <span>Sort by</span>
+                  <select data-sort-mentors>
+                    <option value="rating">Highest rated</option>
+                    <option value="experience">Most experience</option>
+                    <option value="name">Name A–Z</option>
+                  </select>
+                </label>
+                <div class="view-toggle" role="group" aria-label="Mentor display mode">
+                  <button class="icon-button is-selected" type="button" aria-label="Grid view" aria-pressed="true" data-view-mode="grid">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+                  </button>
+                  <button class="icon-button" type="button" aria-label="List view" aria-pressed="false" data-view-mode="list">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12"></path><circle cx="4" cy="5" r="1"></circle><circle cx="4" cy="12" r="1"></circle><circle cx="4" cy="19" r="1"></circle></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mentor-card-grid" data-mentor-grid>
+              <article class="card directory-mentor-card" data-mentor-card data-name="Akosua Agyeman" data-programme="computer-science engineering" data-expertise="tech-ai business-startups finance engineering" data-grad-year="2018" data-experience="7" data-location="accra" data-available="true" data-rating="4.98" data-search="Akosua Agyeman Lead Product Manager Flutterwave FinTech Product Strategy APM Prep UX Research Accra">
+                <div class="mentor-portrait mentor-portrait--one" role="img" aria-label="Illustrative profile initials for Akosua Agyeman">AA</div>
+                <div class="directory-mentor-card__body">
+                  <div class="mentor-card__topline">
+                    <div><h3>Akosua Agyeman <span class="verified-mark" role="img" aria-label="Illustrative verified alumni">✓</span></h3><p class="mentor-role">Lead Product Manager · Flutterwave</p><p class="mentor-meta">BSc Computer Engineering · Class of 2018</p></div>
+                    <span class="mentor-experience">7 yrs exp</span>
+                  </div>
+                  <p class="mentor-rating" aria-label="Illustrative rating 4.98 out of 5 from 34 reviews"><span aria-hidden="true">★</span> 4.98 <span>(34 reviews)</span></p>
+                  <p class="availability-banner"><span aria-hidden="true">●</span><strong>Availability:</strong> Tuesday, 3:30 PM GMT</p>
+                  <p class="mentor-bio">“Scaling digital payment systems across high-growth corridors. Passionate about helping students land their first APM and tech roles.”</p>
+                  <div class="tag-list" aria-label="Mentorship topics"><span>FinTech</span><span>Product Strategy</span><span>APM Prep</span><span>UX Research</span></div>
+                  <div class="directory-mentor-card__actions">
+                    <button class="button button--secondary" type="button" data-view-profile>View Profile</button>
+                    <button class="button button--request" type="button" data-request-mentorship>Request</button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card directory-mentor-card" data-mentor-card data-name="Kwame Mensah" data-programme="computer-science engineering" data-expertise="tech-ai engineering business-startups" data-grad-year="2019" data-experience="6" data-location="accra" data-available="true" data-rating="5.00" data-search="Kwame Mensah Senior Full-Stack Engineer Paystack Software Architecture Go React Distributed Systems Accra">
+                <div class="mentor-portrait mentor-portrait--two" role="img" aria-label="Illustrative profile initials for Kwame Mensah">KM</div>
+                <div class="directory-mentor-card__body">
+                  <div class="mentor-card__topline">
+                    <div><h3>Kwame Mensah <span class="verified-mark" role="img" aria-label="Illustrative verified alumni">✓</span></h3><p class="mentor-role">Senior Full-Stack Engineer · Paystack</p><p class="mentor-meta">BSc Computer Science · Class of 2019</p></div>
+                    <span class="mentor-experience">6 yrs exp</span>
+                  </div>
+                  <p class="mentor-rating" aria-label="Illustrative rating 5 out of 5 from 29 reviews"><span aria-hidden="true">★</span> 5.00 <span>(29 reviews)</span></p>
+                  <p class="availability-banner"><span aria-hidden="true">●</span><strong>Availability:</strong> Open for coffee chats &amp; code review</p>
+                  <p class="mentor-bio">“Building high-throughput financial rails. I offer technical mock interviews, distributed architecture reviews, and career-switch guidance.”</p>
+                  <div class="tag-list" aria-label="Mentorship topics"><span>System Design</span><span>Go</span><span>React</span><span>Distributed Systems</span></div>
+                  <div class="directory-mentor-card__actions">
+                    <button class="button button--secondary" type="button" data-view-profile>View Profile</button>
+                    <button class="button button--request" type="button" data-request-mentorship>Request</button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card directory-mentor-card" data-mentor-card data-name="Nana Ama Serwah" data-programme="law business" data-expertise="law-policy business-startups" data-grad-year="2017" data-experience="8" data-location="london" data-available="false" data-rating="4.94" data-search="Nana Ama Serwah Legal Counsel Tech Policy Advocate Law Social Sciences Venture Capital Intellectual Property London">
+                <div class="mentor-portrait mentor-portrait--three" role="img" aria-label="Illustrative profile initials for Nana Ama Serwah">NS</div>
+                <div class="directory-mentor-card__body">
+                  <div class="mentor-card__topline">
+                    <div><h3>Nana Ama Serwah <span class="verified-mark" role="img" aria-label="Illustrative verified alumni">✓</span></h3><p class="mentor-role">Legal Counsel &amp; Tech Policy Advocate</p><p class="mentor-meta">BA Law &amp; Social Sciences · Class of 2017</p></div>
+                    <span class="mentor-experience">8 yrs exp</span>
+                  </div>
+                  <p class="mentor-rating" aria-label="Illustrative rating 4.94 out of 5 from 21 reviews"><span aria-hidden="true">★</span> 4.94 <span>(21 reviews)</span></p>
+                  <p class="availability-banner availability-banner--later"><span aria-hidden="true">●</span><strong>Availability:</strong> Next month · 4 slots</p>
+                  <p class="mentor-bio">“Advising high-growth ventures on regulatory compliance and intellectual property. Happy to guide emerging founders and future lawyers.”</p>
+                  <div class="tag-list" aria-label="Mentorship topics"><span>Tech Law</span><span>IP Protection</span><span>Venture Capital</span><span>Policy</span></div>
+                  <div class="directory-mentor-card__actions">
+                    <button class="button button--secondary" type="button" data-view-profile>View Profile</button>
+                    <button class="button button--request" type="button" data-request-mentorship>Request</button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card directory-mentor-card" data-mentor-card data-name="Kofi Boateng" data-programme="computer-science engineering" data-expertise="tech-ai engineering" data-grad-year="2020" data-experience="5" data-location="kumasi" data-available="true" data-rating="4.96" data-search="Kofi Boateng ML Researcher Google Research Ghana NLP African low-resource language modeling machine learning Kumasi">
+                <div class="mentor-portrait mentor-portrait--four" role="img" aria-label="Illustrative profile initials for Kofi Boateng">KB</div>
+                <div class="directory-mentor-card__body">
+                  <div class="mentor-card__topline">
+                    <div><h3>Kofi Boateng <span class="verified-mark" role="img" aria-label="Illustrative verified alumni">✓</span></h3><p class="mentor-role">ML Researcher · Google Research</p><p class="mentor-meta">BSc Computer Science · Class of 2020</p></div>
+                    <span class="mentor-experience">5 yrs exp</span>
+                  </div>
+                  <p class="mentor-rating" aria-label="Illustrative rating 4.96 out of 5 from 19 reviews"><span aria-hidden="true">★</span> 4.96 <span>(19 reviews)</span></p>
+                  <p class="availability-banner"><span aria-hidden="true">●</span><strong>Availability:</strong> 2 slots available this week</p>
+                  <p class="mentor-bio">“Specialized in NLP and African low-resource language modeling. Mentoring students on research publishing and machine learning foundations.”</p>
+                  <div class="tag-list" aria-label="Mentorship topics"><span>AI / ML</span><span>NLP</span><span>PyTorch</span><span>Research</span></div>
+                  <div class="directory-mentor-card__actions">
+                    <button class="button button--secondary" type="button" data-view-profile>View Profile</button>
+                    <button class="button button--request" type="button" data-request-mentorship>Request</button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card directory-mentor-card" data-mentor-card data-name="Rohan Mehta" data-programme="computer-science business" data-expertise="finance business-startups tech-ai" data-grad-year="2019" data-experience="9" data-location="london" data-available="true" data-rating="4.91" data-search="Rohan Mehta Senior Investment Analyst McKinsey Fintech Strategy Consulting Case Prep London">
+                <div class="mentor-portrait mentor-portrait--five" role="img" aria-label="Illustrative profile initials for Rohan Mehta">RM</div>
+                <div class="directory-mentor-card__body">
+                  <div class="mentor-card__topline">
+                    <div><h3>Rohan Mehta <span class="verified-mark" role="img" aria-label="Illustrative verified alumni">✓</span></h3><p class="mentor-role">Senior Investment Analyst · McKinsey &amp; Co.</p><p class="mentor-meta">BSc Business Administration · Class of 2019</p></div>
+                    <span class="mentor-experience">9 yrs exp</span>
+                  </div>
+                  <p class="mentor-rating" aria-label="Illustrative rating 4.91 out of 5 from 26 reviews"><span aria-hidden="true">★</span> 4.91 <span>(26 reviews)</span></p>
+                  <p class="availability-banner"><span aria-hidden="true">●</span><strong>Availability:</strong> Friday, 2:00 PM GMT</p>
+                  <p class="mentor-bio">“Focused on emerging market financial systems and venture advisory. Happy to conduct case interview practice and corporate strategy reviews.”</p>
+                  <div class="tag-list" aria-label="Mentorship topics"><span>Strategy</span><span>Consulting</span><span>Case Prep</span><span>FinTech</span></div>
+                  <div class="directory-mentor-card__actions">
+                    <button class="button button--secondary" type="button" data-view-profile>View Profile</button>
+                    <button class="button button--request" type="button" data-request-mentorship>Request</button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card directory-mentor-card" data-mentor-card data-name="Amara Okafor" data-programme="computer-science business" data-expertise="tech-ai business-startups media-creative" data-grad-year="2017" data-experience="8" data-location="london" data-available="true" data-rating="4.97" data-search="Amara Okafor Staff Product Lead Spotify Product Roadmap Career Switch Growth Leadership London">
+                <div class="mentor-portrait mentor-portrait--six" role="img" aria-label="Illustrative profile initials for Amara Okafor">AO</div>
+                <div class="directory-mentor-card__body">
+                  <div class="mentor-card__topline">
+                    <div><h3>Amara Okafor <span class="verified-mark" role="img" aria-label="Illustrative verified alumni">✓</span></h3><p class="mentor-role">Staff Product Lead · Spotify</p><p class="mentor-meta">BSc Computer Science · Class of 2017</p></div>
+                    <span class="mentor-experience">8 yrs exp</span>
+                  </div>
+                  <p class="mentor-rating" aria-label="Illustrative rating 4.97 out of 5 from 38 reviews"><span aria-hidden="true">★</span> 4.97 <span>(38 reviews)</span></p>
+                  <p class="availability-banner"><span aria-hidden="true">●</span><strong>Availability:</strong> Open for portfolio &amp; resume review</p>
+                  <p class="mentor-bio">“Advising on career growth frameworks, organizational influence, and transitions from software engineering into product roles.”</p>
+                  <div class="tag-list" aria-label="Mentorship topics"><span>Product Roadmap</span><span>Career Switch</span><span>Growth</span><span>Leadership</span></div>
+                  <div class="directory-mentor-card__actions">
+                    <button class="button button--secondary" type="button" data-view-profile>View Profile</button>
+                    <button class="button button--request" type="button" data-request-mentorship>Request</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <p class="mentor-empty" hidden tabindex="-1" data-mentor-empty>No sample mentors match these filters. Try changing or resetting your filters.</p>
+            <nav class="mentor-pagination" aria-label="Mentor results pagination">
+              <span data-pagination-summary>Showing 6 illustrative mentor profiles</span>
+              <div>
+                <button class="button button--secondary" type="button" disabled aria-label="Previous page">‹ <span>Previous</span></button>
+                <button class="button button--primary" type="button" aria-current="page" aria-label="Page 1">1</button>
+                <button class="button button--secondary" type="button" disabled aria-label="Next page"><span>Next</span> ›</button>
+              </div>
+            </nav>
+          </section>
+
+          <section class="mentor-callout" aria-labelledby="mentor-callout-title">
+            <span class="mentor-callout__icon" aria-hidden="true">♡</span>
+            <div>
+              <h2 id="mentor-callout-title">Are you an experienced graduate? Your experience can change someone’s future.</h2>
+              <p>Give back to KNUST students by sharing career advice. Just 1–2 hours a month.</p>
+            </div>
+            <button class="text-action mentor-perks" type="button" data-preview-action data-dialog-title="Mentor perks preview" data-dialog-message="Mentor benefits are not connected to a live programme in this preview.">Learn About Perks</button>
+            <button class="button button--coral" type="button" data-preview-action data-dialog-title="Become a mentor preview" data-dialog-message="Mentor applications are not submitted from this frontend preview.">Become a Mentor <span aria-hidden="true">→</span></button>
+          </section>
+          <p class="mentorship-feedback" role="status" aria-live="polite" data-mentorship-feedback></p>
+        </main>
+
+        <nav class="mobile-nav" aria-label="Mobile authenticated navigation">
+          <a class="mobile-nav__link" href="./dashboard.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg><span>Home</span></a>
+          <a class="mobile-nav__link" href="#" data-nav-link><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"></circle><path d="m15 15 5 5"></path></svg><span>Explore</span></a>
+          <a class="mobile-nav__link" href="./mentorship.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.2-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.8-7 10-7 10Z"></path></svg><span>Mentors</span></a>
+          <a class="mobile-nav__link" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"></path></svg><span>Messages</span></a>
+          <a class="mobile-nav__link" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c.7-5 3.4-7 8-7s7.3 2 8 7"></path></svg><span>Profile</span></a>
+        </nav>
+      </div>
+    </div>
+
+    <dialog class="mentorship-dialog" aria-labelledby="mentorship-dialog-title" aria-describedby="mentorship-dialog-message" data-mentorship-dialog>
+      <div class="dialog__header">
+        <h2 id="mentorship-dialog-title">Preview</h2>
+        <button class="icon-button" type="button" aria-label="Close dialog" data-close-mentorship-dialog>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+      <div class="dialog__body"><p id="mentorship-dialog-message" data-mentorship-dialog-message></p></div>
+      <div class="dialog__footer">
+        <button class="button button--secondary" type="button" data-close-mentorship-dialog>Close</button>
+        <button class="button button--primary" type="button" hidden data-confirm-mentorship>Mark request in preview</button>
+      </div>
+    </dialog>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/mentorship.js"></script>
+  </body>
+</html>
