@@ -169,12 +169,12 @@ export default function LoginPage() {
                 />
                 Remember me
               </label>
-              <a 
-                href="#forgot-password" 
+              <Link 
+                to="/forgot-password" 
                 className="font-semibold text-slate-600 hover:text-slate-900 transition text-[11px]"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Primary Submit Button */}
