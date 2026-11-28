@@ -5,9 +5,10 @@ import { authenticate, requireRole, requireVerified } from '../../middleware/aut
 import { validate } from '../../middleware/validate.js';
 import { AppError, badRequest, conflict, notFound } from '../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
-import { idParam, pagingShape } from '../../utils/schemas.js';
-import { PROFILE_COLS, USER_COLS } from '../shared/sql.js';
-import { activeConnection, isBlocked } from '../shared/relations.js';
+import { keysetResponse, readCursor } from '../../utils/pagination.js';
+import { hybridPagingShape, idParam } from '../../utils/schemas.js';
+import { CONN_LATERAL, NOT_BLOCKED, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE } from '../shared/sql.js';
+import { activeConnection } from '../shared/relations.js';
 import { toPublicProfile } from '../shared/serializers.js';
 import { changeConnection } from './connections.service.js';
 import { publishNotification } from '../v2/notifications/notifications.service.js';
@@ -18,7 +19,7 @@ const createSchema = z.object({
   message: z.string().trim().max(1000).optional(),
 });
 export const connectionListSchema = z.object({
-  ...pagingShape,
+  ...hybridPagingShape,
   status: z.enum(['pending', 'accepted', 'declined', 'cancelled']).default('accepted'),
   direction: z.enum(['incoming', 'outgoing', 'all']).default('all'),
   kind: z.enum(['connect', 'mentorship']).optional(),
@@ -35,15 +36,24 @@ connectionsRoutes.post('/', validate({ body: createSchema }), asyncHandler(async
   if (recipientId === me.id) throw badRequest("You can't send a request to yourself.");
 
   const target = await db.one(
-    `select u.id, u.email, u.first_name, u.role, u.status, u.verification_status, p.willing_to_mentor
-       from users u join profiles p on p.user_id = u.id where u.id = $1`,
-    [recipientId],
+    `select u.id, u.email, u.first_name, u.role, u.status, u.verification_status, p.willing_to_mentor,
+            conn.status as connection_status
+       from users u join profiles p on p.user_id = u.id
+       ${CONN_LATERAL('$2', 'u.id')}
+      where u.id = $1 and ${VISIBLE_PROFILE('u.id', '$2')}`,
+    [recipientId, me.id],
   );
-  const reachable = target && target.status === 'active' && target.verificationStatus === 'verified' && target.role !== 'admin';
-  if (!reachable || (await isBlocked(db, me.id, recipientId))) throw notFound("We couldn't find this person.");
+  if (!target) throw notFound("We couldn't find this person.");
 
-  if (kind === 'mentorship' && !target.willingToMentor) {
-    throw new AppError(409, 'not_mentoring', `${target.firstName} isn't taking mentorship requests right now.`);
+  if (kind === 'mentorship') {
+    // The product contract is alumni mentoring students; keep the actor check here
+    // and again at acceptance so a role change cannot create an invalid pair.
+    if (target.role !== 'alumni') {
+      throw new AppError(409, 'not_alumnus', 'Mentorship is offered by alumni.');
+    }
+    if (!target.willingToMentor) {
+      throw new AppError(409, 'not_mentoring', `${target.firstName} isn't taking mentorship requests right now.`);
+    }
   }
 
   const existing = await activeConnection(db, me.id, recipientId);
@@ -89,22 +99,35 @@ connectionsRoutes.get('/', validate({ query: connectionListSchema }), asyncHandl
   const dir = q.direction === 'incoming' ? 'and c.recipient_id = $1'
     : q.direction === 'outgoing' ? 'and c.requester_id = $1' : '';
 
+  const scope = JSON.stringify({ status: q.status, direction: q.direction, kind: q.kind ?? null });
+  const cursor = {
+    audience: me.id,
+    scope,
+    keysOf: (r) => [r.connectionCreatedAt.toISOString(), r.connectionId],
+  };
+  const keys = q.cursor ? readCursor(q.cursor, cursor) : null;
+  const params = keys
+    ? [me.id, q.status, q.limit + 1, q.kind || null, keys[0], keys[1]]
+    : [me.id, q.status, q.limit, offsetOf(q), q.kind || null];
+  const cursorPredicate = keys ? 'and (c.created_at, c.id) < ($5::timestamptz, $6::uuid)' : '';
+
   const rows = await db.all(
     `select c.id as connection_id, c.kind as connection_kind, c.message as connection_message,
             c.status as connection_status, c.requester_id, c.created_at as connection_created_at,
             c.responded_at as connection_responded_at,
-            ${USER_COLS}, ${PROFILE_COLS}, count(*) over() as total
+            ${USER_COLS}, ${PROFILE_COLS} ${keys ? '' : ', count(*) over() as total'}
        from connections c
        join users u on u.id = case when c.requester_id = $1 then c.recipient_id else c.requester_id end
        join profiles p on p.user_id = u.id
       where (c.requester_id = $1 or c.recipient_id = $1) and c.status = $2 ${dir}
-        and ($5::text is null or c.kind = $5) and u.status = 'active'
-      order by c.created_at desc
-      limit $3 offset $4`,
-    [me.id, q.status, q.limit, offsetOf(q), q.kind || null],
+        and ($4::text is null or c.kind = $4) and u.status = 'active'
+        and u.deactivated_at is null and ${NOT_BLOCKED('$1', 'u.id')} ${cursorPredicate}
+      order by c.created_at desc, c.id desc
+      limit $3 ${keys ? '' : 'offset $4'}`,
+    params,
   );
 
-  res.json(paginated(rows, q, (r) => ({
+  const mapRow = (r) => ({
     id: r.connectionId,
     kind: r.connectionKind,
     message: r.connectionMessage,
@@ -113,7 +136,10 @@ connectionsRoutes.get('/', validate({ query: connectionListSchema }), asyncHandl
     createdAt: r.connectionCreatedAt,
     respondedAt: r.connectionRespondedAt,
     person: toPublicProfile(r, { viewer: me, connected: r.connectionStatus === 'accepted' }),
-  })));
+  });
+  res.json(keys
+    ? keysetResponse(rows, q, mapRow, cursor)
+    : paginated(rows, q, mapRow, cursor));
 }));
 
 // Accept / decline (the person who received it) or cancel (the person who sent it) a pending request.

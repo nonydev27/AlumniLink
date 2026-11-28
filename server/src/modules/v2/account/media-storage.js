@@ -12,6 +12,18 @@ const CONTENT_TYPES = Object.freeze({
 export const SUPPORTED_IMAGE_TYPES = Object.keys(CONTENT_TYPES);
 const KEY_PATTERN = /^[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
+/**
+ * Never trust the browser's Content-Type. Decode the first bytes and derive the
+ * real image type; anything unexpected is rejected before it reaches storage.
+ */
+export function detectImageContentType(bytes) {
+  const b = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes || []);
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
+
 /** Local filesystem adapter for development. Production adapters implement the same port. */
 const localProvider = {
   name: 'local',

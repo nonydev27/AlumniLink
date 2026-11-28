@@ -117,7 +117,8 @@ institutionAdminRoutes.patch('/domains/:id/review', validate({ params: idParam, 
                  evidence_summary, proposed_by, review_decision, reviewed_by, reviewed_at`,
       [current.id, decision === 'approve' ? 'approved' : 'rejected', req.user.id],
     );
-    await audit(t, req.user.id, `institution_domain_${decision}d`, 'institution_domain', row.id, { domain: row.domain });
+    await audit(t, req.user.id, decision === 'approve' ? 'institution_domain_approved' : 'institution_domain_rejected',
+      'institution_domain', row.id, { domain: row.domain });
     return row;
   });
   res.json({ data: mapping });

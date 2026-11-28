@@ -5,7 +5,7 @@ import { asyncHandler } from '../../utils/http.js';
 import { loadProfileRow } from '../me/me.service.js';
 import { getMentorSuggestions, getOpportunitySuggestions } from '../ai/ai.service.js';
 import { toOpportunity } from '../shared/serializers.js';
-import { NOT_BLOCKED } from '../shared/sql.js';
+import { CONN_LATERAL, NOT_BLOCKED, VISIBLE_PROFILE } from '../shared/sql.js';
 
 export const dashboardRoutes = Router();
 dashboardRoutes.use(authenticate, requireRole('student', 'alumni'));
@@ -20,7 +20,10 @@ dashboardRoutes.get('/', asyncHandler(async (req, res) => {
     `select
        (select count(*) from connections where recipient_id = $1 and status = 'pending') as pending_requests,
        (select count(*) from messages m join conversations c on c.id = m.conversation_id
-         where (c.user_a = $1 or c.user_b = $1) and m.sender_id <> $1 and m.read_at is null and m.status = 'visible') as unread_messages`,
+         join users sender on sender.id = m.sender_id
+         where (c.user_a = $1 or c.user_b = $1) and m.sender_id <> $1 and m.read_at is null
+           and m.status = 'visible' and sender.deactivated_at is null
+           and ${NOT_BLOCKED('$1', 'm.sender_id')}) as unread_messages`,
     [me.id],
   );
 
@@ -47,9 +50,10 @@ dashboardRoutes.get('/', asyncHandler(async (req, res) => {
             o.event_date, o.deadline, o.tags, o.status, o.created_at, o.posted_by,
             u.first_name as poster_first_name, u.last_name as poster_last_name
        from opportunities o join users u on u.id = o.posted_by
-      where o.status = 'active' and u.status = 'active'
+       ${CONN_LATERAL('$1', 'o.posted_by')}
+      where o.status = 'active'
+        and ${VISIBLE_PROFILE('o.posted_by', '$1')}
         and (o.deadline is null or o.deadline >= now()) and (o.event_date is null or o.event_date >= now())
-        and ${NOT_BLOCKED('$1', 'o.posted_by')}
       order by coalesce(o.event_date, o.deadline, o.created_at) asc limit 3`,
     [me.id],
   );

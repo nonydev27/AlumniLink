@@ -51,6 +51,9 @@ test('versioned schema upgrades v1 rows safely and enforces v2 data invariants',
       '006_auth_epoch_and_analytics_rollup.sql',
       '007_public_profile_details.sql',
       '008_alumni_transition_requests.sql',
+      '009_lock_verified_alumni_identity.sql',
+      '010_moderation_and_mentorship.sql',
+      '011_saved_opportunities.sql',
     ]);
     for (const filename of migrationFiles) {
       await client.query(await fs.readFile(path.join(migrationDir, filename), 'utf8'));
@@ -70,6 +73,62 @@ test('versioned schema upgrades v1 rows safely and enforces v2 data invariants',
     assert.equal(legacy.institution_id, null);
     assert.equal(legacy.headline, 'Legacy profile');
     assert.equal(legacy.live_refresh, '1');
+
+    const verifiedAlumniId = randomUUID();
+    await client.query(
+      `insert into users (id, email, password_hash, role, first_name, last_name, verification_status, verified_at)
+       values ($1, 'locked@alumni.example.edu', 'fixture-hash', 'alumni', 'Locked', 'Alumnus', 'verified', now())`,
+      [verifiedAlumniId],
+    );
+    await client.query(
+      `insert into profiles (user_id, programme, graduation_year, batch)
+       values ($1, 'Computer Science', 2018, '2018')`,
+      [verifiedAlumniId],
+    );
+    await expectSqlCode(
+      client.query("update profiles set programme = 'Unreviewed' where user_id = $1", [verifiedAlumniId]),
+      'P0001',
+    );
+    await expectSqlCode(
+      client.query('update profiles set graduation_year = 2020 where user_id = $1', [verifiedAlumniId]),
+      'P0001',
+    );
+    await client.query("select set_config('app.identity_transition_user', $1, false)", [verifiedAlumniId]);
+    await client.query(
+      `update profiles set programme = 'Reviewed Studies', graduation_year = 2019, batch = '2019'
+       where user_id = $1`,
+      [verifiedAlumniId],
+    );
+    await client.query("select set_config('app.identity_transition_user', '', false)");
+    const reviewedIdentity = (await client.query(
+      'select programme, graduation_year from profiles where user_id = $1', [verifiedAlumniId],
+    )).rows[0];
+    assert.equal(reviewedIdentity.programme, 'Reviewed Studies');
+    assert.equal(reviewedIdentity.graduation_year, 2019);
+
+    const tier2Columns = await client.query(
+      `select table_name, column_name from information_schema.columns
+        where table_schema = $1 and (
+          (table_name = 'reports' and column_name in ('content_snapshot', 'target_author_id'))
+          or (table_name = 'mentorships' and column_name = 'completion_requested_by'))`,
+      [schema],
+    );
+    assert.deepEqual(tier2Columns.rows.map((r) => `${r.table_name}.${r.column_name}`).sort(), [
+      'mentorships.completion_requested_by', 'reports.content_snapshot', 'reports.target_author_id',
+    ]);
+    const deletedStatuses = await client.query(
+      `select t.table_name, c.constraint_name
+         from information_schema.check_constraints c
+         join information_schema.constraint_column_usage t on t.constraint_name = c.constraint_name
+        where c.constraint_schema = $1 and c.check_clause like '%deleted%'`,
+      [schema],
+    );
+    assert.ok(deletedStatuses.rows.length >= 3, 'author-delete status must be allowed on messages, posts and opportunities');
+    await client.query("insert into audit_log (action, entity, meta) values ('probe', 'report', '{}')");
+    await expectSqlCode(
+      client.query("update audit_log set action = 'tampered' where action = 'probe'"),
+      'P0001',
+    );
 
     const gateRows = (await client.query(
       'select gate_name, enabled from security_feature_gates order by gate_name',

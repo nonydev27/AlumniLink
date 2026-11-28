@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate.js';
 import { badRequest, notFound } from '../../utils/errors.js';
 import { asyncHandler } from '../../utils/http.js';
 import { userIdParam } from '../../utils/schemas.js';
+import { audit } from '../shared/audit.js';
 import { PAIR_MATCH } from '../shared/sql.js';
 
 export const blocksRoutes = Router();
@@ -32,6 +33,18 @@ blocksRoutes.post('/', validate({ body: z.object({ userId: z.string().uuid() }) 
         where ${PAIR_MATCH('$1', '$2')} and c.status in ('pending', 'accepted')`,
       [req.user.id, userId],
     );
+    // A block ends an active mentorship; unblocking never restores it.
+    const ended = await t.all(
+      `update mentorships set status = 'completed', completed_at = now(),
+              completion_requested_by = null, updated_at = now()
+        where status in ('active', 'paused')
+          and ((mentor_id = $1 and mentee_id = $2) or (mentor_id = $2 and mentee_id = $1))
+        returning id`,
+      [req.user.id, userId],
+    );
+    if (ended.length) {
+      await audit(t, req.user.id, 'block.end_mentorship', 'block', userId, { mentorshipIds: ended.map((m) => m.id) });
+    }
   });
   res.status(204).end();
 }));

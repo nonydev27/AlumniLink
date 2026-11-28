@@ -88,6 +88,8 @@ export interface Opportunity {
 export interface BatchPost {
   id: string
   gradYear: number
+  /** Absent on legacy demo posts; those remain visible to every programme of the year. */
+  programme?: string
   authorId: string
   body: string
   createdAt: string
@@ -117,7 +119,8 @@ export interface UserState {
   dismissedMatches: string[]
   savedOpportunities: string[]
   blocked: string[]
-  joinedBatches: number[]
+  /** `${graduationYear}|${programme}` keys: a year alone is not a unique batch. */
+  joinedBatches: string[]
   aiFeedback: Record<string, 'helpful' | 'not-helpful'>
   settings: AppSettings
 }

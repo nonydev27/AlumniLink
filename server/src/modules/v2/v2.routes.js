@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db, tx } from '../../db.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, optionalAuthenticate } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { AppError, notFound } from '../../utils/errors.js';
 import { asyncHandler } from '../../utils/http.js';
 import { idParam } from '../../utils/schemas.js';
-import { getMediaStorageProvider } from './account/media-storage.js';
+import { NOT_BLOCKED } from '../shared/sql.js';
+import { detectImageContentType, getMediaStorageProvider } from './account/media-storage.js';
 import { config } from '../../config.js';
 import { v2AuthRoutes } from './auth/auth.routes.js';
 import { notificationRoutes, notificationPreferenceRoutes } from './notifications/notifications.routes.js';
@@ -35,21 +36,62 @@ v2Router.get('/terms/current', asyncHandler(async (req, res) => {
 
 v2Router.use('/auth', v2AuthRoutes);
 
+// The reviewed institution catalog is public so sign-up can explain which email
+// domains will verify a student. Admin routes remain the only write surface.
+v2Router.get('/public/institutions', asyncHandler(async (req, res) => {
+  const rows = await db.all(
+    `select i.id, i.name, i.short_name, m.domain
+     from institutions i join institution_domain_mappings m on m.institution_id = i.id
+     where i.status = 'active' and m.status = 'active' and m.review_decision = 'approved'
+       and m.reviewed_by is not null and m.reviewed_by <> m.proposed_by
+     order by lower(i.name), m.domain`,
+  );
+  res.json({ data: rows });
+}));
+
 // Public discovery must be registered before any authenticated catch-all router,
 // otherwise its router-level guard answers 401/403 before these paths are seen.
 v2Router.use(discoveryRoutes);
 
-// Confirmed media is publicly readable so public profiles can display photos.
-v2Router.get('/media/:id/file', validate({ params: idParam }), asyncHandler(async (req, res) => {
+// Only images actually shown on a live public profile (or the owner's own
+// upload) are readable. A random confirmed asset id is not a capability URL.
+v2Router.get('/media/:id/file', optionalAuthenticate, validate({ params: idParam }), asyncHandler(async (req, res) => {
   const provider = getMediaStorageProvider();
   if (!provider) throw new AppError(503, 'media_provider_unavailable', 'Media storage is not configured.');
+  const id = req.valid.params.id;
   const asset = await db.one(
-    "select object_key from media_assets where id = $1 and status = 'confirmed'",
-    [req.valid.params.id],
+    `select object_key, owner_user_id from media_assets where id = $1 and status = 'confirmed'`,
+    [id],
   );
   if (!asset) throw notFound("We couldn't find that image.");
-  const { bytes, contentType } = await provider.get(asset.objectKey);
-  res.type(contentType).send(bytes);
+  const viewer = req.user;
+  if (!viewer || viewer.id !== asset.ownerUserId) {
+    const publicPath = `/api/v2/media/${id}/file`;
+    const params = [asset.ownerUserId, publicPath];
+    let blockClause = 'true';
+    if (viewer) {
+      params.push(viewer.id);
+      blockClause = NOT_BLOCKED('$3', 'u.id');
+    }
+    const visible = await db.one(
+      `select 1 as ok
+         from users u join profiles p on p.user_id = u.id
+        where u.id = $1 and u.status = 'active' and u.deactivated_at is null
+          and u.verification_status = 'verified' and u.role in ('student', 'alumni')
+          and u.public_profile_indexable
+          and coalesce((u.privacy->>'discoverable')::boolean, true)
+          and coalesce((u.privacy->>'networkOnly')::boolean, false) = false
+          and (p.avatar_url = $2 or p.banner_url = $2)
+          and ${blockClause}`,
+      params,
+    );
+    if (!visible) throw notFound("We couldn't find that image.");
+  }
+  const { bytes } = await provider.get(asset.objectKey);
+  // Never derive the response type from the stored extension or a header.
+  const contentType = detectImageContentType(bytes);
+  if (!contentType) throw notFound("We couldn't find that image.");
+  res.type(contentType).set('X-Content-Type-Options', 'nosniff').send(bytes);
 }));
 
 v2Router.post('/me/terms/accept', authenticate, validate({ body: acceptTermsSchema }), asyncHandler(async (req, res) => {

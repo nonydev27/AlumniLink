@@ -11,22 +11,26 @@ import { Icon } from '../components/ui/Icon'
 import { ReportDialog } from '../components/ui/ReportDialog'
 import { Tabs } from '../components/ui/Tabs'
 import { timeAgo } from '../lib/format'
-import { useStore } from '../lib/store'
+import { batchKey, useStore } from '../lib/store'
 
 export default function BatchGroupPage() {
-  const year = Number(useParams().year)
   const { me, db, myState, toggleJoinBatch, addBatchPost, deleteBatchPost } = useStore()
+  const params = useParams()
+  const year = Number(params.year)
+  // Older links with no programme fall back to the viewer's own batch.
+  const programme = params.programme ?? me?.programme ?? ''
   const [tab, setTab] = useState<'posts' | 'members'>('posts')
   const [draft, setDraft] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [reporting, setReporting] = useState<string | null>(null)
   if (!me) return null
 
-  const label = year > new Date().getFullYear() ? `Graduating ${year}` : `Class of ${year}`
-  const members = db.users.filter((u) => u.gradYear === year && u.role !== 'admin' && u.verification === 'verified' && !myState.blocked.includes(u.id))
-  const posts = db.batchPosts.filter((p) => p.gradYear === year && !myState.blocked.includes(p.authorId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  const isMine = me.gradYear === year && me.role !== 'admin'
-  const joined = isMine || myState.joinedBatches.includes(year)
+  const key = batchKey(year, programme)
+  const label = `${year > new Date().getFullYear() ? `Graduating ${year}` : `Class of ${year}`} · ${programme}`
+  const members = db.users.filter((u) => u.gradYear === year && u.programme === programme && u.role !== 'admin' && u.verification === 'verified' && !myState.blocked.includes(u.id))
+  const posts = db.batchPosts.filter((p) => p.gradYear === year && (!p.programme || p.programme === programme) && !myState.blocked.includes(p.authorId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const isMine = me.gradYear === year && me.programme === programme && me.role !== 'admin'
+  const joined = isMine || myState.joinedBatches.includes(key)
   const canPost = joined && me.verification === 'verified'
 
   return (
@@ -44,7 +48,7 @@ export default function BatchGroupPage() {
           </div>
         </div>
         {!isMine && (
-          <Button variant={joined ? 'secondary' : 'primary'} size="lg" onClick={() => toggleJoinBatch(year)} aria-pressed={joined}>
+          <Button variant={joined ? 'secondary' : 'primary'} size="lg" onClick={() => toggleJoinBatch(key)} aria-pressed={joined}>
             {joined ? 'Leave group' : 'Join group'}
           </Button>
         )}
@@ -59,7 +63,7 @@ export default function BatchGroupPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault()
-                  addBatchPost(year, draft)
+                  addBatchPost(year, programme, draft)
                   setDraft('')
                 }}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"

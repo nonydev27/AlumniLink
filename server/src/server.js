@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { config } from './config.js';
 import { db, pool } from './db.js';
+import { flushAnalyticsEvents } from './modules/v2/analytics/analytics.service.js';
 
 try {
   await pool.query('select 1');
@@ -27,6 +28,7 @@ async function shutdown(signal) {
   shuttingDown = true;
   console.log(`${signal} received, shutting down...`);
   server.close(async () => {
+    await flushAnalyticsEvents();
     await pool.end().catch(() => {});
     process.exit(0);
   });

@@ -59,11 +59,10 @@ test('v2 signup queues verification durably without inventing email delivery', a
   const result = await registerV2(registerSchema.parse(signup), {
     database: { one: async () => null },
     transaction: async (work) => work(client),
-    provider: null, // no adapter selected
     loadUser: async () => ({ id: 'user-1' }),
   });
   assert.equal(result.verification.required, true);
-  assert.equal(result.verification.delivery, 'queued_no_provider');
+  assert.equal(result.verification.delivery, 'queued');
   assert.equal(JSON.stringify(result).includes('rawToken'), false);
   assert.equal(statements.some((sql) => sql.includes('insert into email_action_tokens')), true);
   assert.equal(statements.some((sql) => sql.includes('insert into notification_outbox')), true);
@@ -133,7 +132,7 @@ test('resend verification is non-enumerating for unknown email addresses', async
   assert.equal(transactions, 0);
 });
 
-test('notification publisher keeps in-app events and does not enqueue email without a provider', async () => {
+test('notification publisher keeps in-app events and queues email intent without a provider', async () => {
   const statements = [];
   const database = {
     one: async (sql) => {
@@ -253,6 +252,7 @@ test('accepted mentorship connections create a participant relationship and in-a
         return { id: 'connection-1', requesterId: 'mentee-1', recipientId: 'mentor-1', kind: 'mentorship', status: 'pending' };
       }
       if (sql.includes('select u.id')) return { id: 'mentor-1' };
+      if (sql.includes('from blocks')) return null; // no block between the pair
       if (sql.includes('insert into mentorships')) {
         return { id: 'mentorship-1', connectionId: 'connection-1', mentorId: 'mentor-1', menteeId: 'mentee-1', status: 'active' };
       }
@@ -285,7 +285,7 @@ test('accepted mentorship connections create a participant relationship and in-a
   assert.equal(events[0].userId, 'mentee-1');
 });
 
-test('mentorship reads and transitions derive completed mentor totals from stored relationships', async () => {
+test('mentorship completion needs both parties and mentor totals stay deduplicated', async () => {
   const updatedAt = new Date('2026-11-17T07:00:00.000Z');
   const list = await listMentorships('mentor-1', { page: 1, limit: 20, role: 'mentor' }, {
     database: {
@@ -304,42 +304,48 @@ test('mentorship reads and transitions derive completed mentor totals from store
   assert.equal(list.meta.total, 1);
 
   const events = [];
+  let completionRequestedBy = null;
   const database = {
     one: async (sql) => {
       if (sql.includes('for update')) {
         return {
-          id: 'mentorship-1',
-          connectionId: 'connection-1',
-          mentorId: 'mentor-1',
-          menteeId: 'mentee-1',
-          status: 'active',
-          startedAt: updatedAt,
+          id: 'mentorship-1', connectionId: 'connection-1', mentorId: 'mentor-1', menteeId: 'mentee-1',
+          status: 'active', startedAt: updatedAt, updatedAt, completionRequestedBy,
         };
       }
+      if (sql.includes('from users u')) return { ok: 1 }; // counterpart reachable and not blocked
       if (sql.includes('update mentorships')) {
         return {
-          id: 'mentorship-1',
-          connectionId: 'connection-1',
-          mentorId: 'mentor-1',
-          menteeId: 'mentee-1',
-          status: 'completed',
-          startedAt: updatedAt,
-          completedAt: updatedAt,
-          updatedAt,
+          id: 'mentorship-1', connectionId: 'connection-1', mentorId: 'mentor-1', menteeId: 'mentee-1',
+          status: 'completed', completionRequestedBy: null, startedAt: updatedAt,
+          completedAt: updatedAt, updatedAt,
         };
       }
       return { completedMentorshipCount: 1 };
     },
-    run: async () => 1,
+    run: async (sql) => {
+      if (sql.includes('completion_requested_by = $2')) completionRequestedBy = 'mentor-1';
+      return 1;
+    },
   };
-  const updated = await updateMentorship('mentorship-1', 'mentor-1', 'completed', {
+  const opts = {
     transaction: (work) => work(database),
     publish: async (_transactionClient, event) => events.push(event),
-  });
-  assert.equal(updated.status, 'completed');
-  assert.equal(updated.completedMentorshipCount, 1);
-  assert.equal(events[0].type, 'mentorship_updated');
+  };
+
+  // The mentor asks first: intent is recorded, nothing is completed yet.
+  const requested = await updateMentorship('mentorship-1', 'mentor-1', 'completed', opts);
+  assert.equal(requested.status, 'active');
+  assert.equal(requested.completionRequestedBy, 'mentor-1');
+  assert.equal(events[0].type, 'mentorship_completion_request');
   assert.equal(events[0].userId, 'mentee-1');
+
+  // Only the mentee can finalise it.
+  const confirmed = await updateMentorship('mentorship-1', 'mentee-1', 'completed', opts);
+  assert.equal(confirmed.status, 'completed');
+  assert.equal(confirmed.completedMentorshipCount, 1);
+  assert.equal(events[1].type, 'mentorship_updated');
+  assert.equal(events[1].userId, 'mentor-1');
 });
 
 test('v2 registration endpoint creates an unverified account and queues verification', async (t) => {

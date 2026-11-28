@@ -5,11 +5,12 @@ import { authenticate, requireRole } from '../../../middleware/auth.js';
 import { validate } from '../../../middleware/validate.js';
 import { badRequest, notFound } from '../../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../../utils/http.js';
-import { idParam, pagingShape } from '../../../utils/schemas.js';
+import { keysetResponse, readCursor } from '../../../utils/pagination.js';
+import { hybridPagingShape, idParam } from '../../../utils/schemas.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
 import { NOTIFICATION_TYPES } from './notifications.service.js';
 
-const listSchema = z.object(pagingShape);
+const listSchema = z.object(hybridPagingShape);
 const emptySchema = z.object({}).strict();
 const typeSet = new Set(NOTIFICATION_TYPES);
 const preferenceItem = z.object({
@@ -33,14 +34,28 @@ notificationRoutes.use(authenticate, requireRole('student', 'alumni'), ...requir
 
 notificationRoutes.get('/', validate({ query: listSchema }), asyncHandler(async (req, res) => {
   const q = req.valid.query;
+  const cursor = {
+    audience: req.user.id,
+    scope: 'notifications:v1',
+    keysOf: (row) => [row.createdAt.toISOString(), row.id],
+  };
+  const keys = q.cursor ? readCursor(q.cursor, cursor) : null;
+  const params = [req.user.id, q.limit + (keys ? 1 : 0)];
+  let predicate = '';
+  if (keys) {
+    params.push(keys[0], keys[1]);
+    predicate = `and (created_at, id) < ($3::timestamptz, $4::uuid)`;
+  } else {
+    params.push(offsetOf(q));
+  }
   const rows = await db.all(
-    `select id, notification_type, title, body, data, created_at, read_at,
-            count(*) over() as total
-     from notifications where user_id = $1
-     order by created_at desc, id desc limit $2 offset $3`,
-    [req.user.id, q.limit, offsetOf(q)],
+    `select id, notification_type, title, body, data, created_at, read_at
+            ${keys ? '' : ', count(*) over() as total'}
+     from notifications where user_id = $1 ${predicate}
+     order by created_at desc, id desc limit $2 ${keys ? '' : 'offset $3'}`,
+    params,
   );
-  res.json(paginated(rows, q, (row) => ({
+  const mapRow = (row) => ({
     id: row.id,
     notificationType: row.notificationType,
     title: row.title,
@@ -48,7 +63,10 @@ notificationRoutes.get('/', validate({ query: listSchema }), asyncHandler(async 
     data: row.data,
     createdAt: row.createdAt,
     readAt: row.readAt,
-  })));
+  });
+  res.json(keys
+    ? keysetResponse(rows, q, mapRow, cursor)
+    : paginated(rows, q, mapRow, cursor));
 }));
 
 notificationRoutes.get('/unread-count', asyncHandler(async (req, res) => {

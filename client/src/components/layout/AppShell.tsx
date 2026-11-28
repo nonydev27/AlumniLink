@@ -73,7 +73,7 @@ export function AppShell() {
             </div>
             <button
               type="button"
-              onClick={() => { logout(); navigate('/') }}
+              onClick={() => { void logout().finally(() => navigate('/')) }}
               aria-label="Sign out"
               title="Sign out"
               className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600"

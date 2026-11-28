@@ -1,4 +1,3 @@
-import { db } from '../../db.js';
 import { config } from '../../config.js';
 import { AppError } from '../../utils/errors.js';
 import { asyncHandler } from '../../utils/http.js';
@@ -10,27 +9,22 @@ const currentTermsVersion = () => {
   return config.terms.version;
 };
 
-async function loadIdentityState(userId) {
-  if (!userId) return null;
-  return db.one('select email_verified_at, terms_accepted_version from users where id = $1', [userId]);
-}
-
-export const requireCurrentTerms = asyncHandler(async (req, res, next) => {
+// authenticate() already loaded this identity incl. verification/terms state.
+// The guards deliberately use that snapshot: no writes happen between the
+// middleware stages, and re-reading the row here cost two round trips/request.
+export const requireCurrentTerms = (req, res, next) => {
   const version = currentTermsVersion();
-  const state = await loadIdentityState(req.user.id);
-  if (!state || state.termsAcceptedVersion !== version) {
-    throw new AppError(403, 'terms_acceptance_required', 'Accept the current terms to use this feature.');
+  if (req.user?.termsAcceptedVersion !== version) {
+    return next(new AppError(403, 'terms_acceptance_required', 'Accept the current terms to use this feature.'));
   }
-  next();
-});
+  return next();
+};
 
-export const requireVerifiedV2Email = asyncHandler(async (req, res, next) => {
-  const state = await loadIdentityState(req.user.id);
-  if (!state?.emailVerifiedAt) {
-    throw new AppError(403, 'email_verification_required', 'Verify your email address to use this feature.');
+export const requireVerifiedV2Email = (req, res, next) => {
+  if (!req.user?.emailVerifiedAt) {
+    return next(new AppError(403, 'email_verification_required', 'Verify your email address to use this feature.'));
   }
-  next();
-});
+  return next();
+};
 
 export const requireV2MemberPrerequisites = [requireCurrentTerms, requireVerifiedV2Email];
-

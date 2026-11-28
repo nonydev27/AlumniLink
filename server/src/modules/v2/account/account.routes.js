@@ -8,8 +8,9 @@ import { AppError, badRequest, conflict, notFound } from '../../../utils/errors.
 import { asyncHandler } from '../../../utils/http.js';
 import { httpUrl, idParam } from '../../../utils/schemas.js';
 import { verifyPassword } from '../../auth/auth.service.js';
+import { requireV2MemberPrerequisites } from '../middleware.js';
 import { audit } from '../../shared/audit.js';
-import { getMediaStorageProvider, SUPPORTED_IMAGE_TYPES } from './media-storage.js';
+import { detectImageContentType, getMediaStorageProvider, SUPPORTED_IMAGE_TYPES } from './media-storage.js';
 
 const memberRoles = requireRole('student', 'alumni');
 const empty = z.object({}).strict();
@@ -29,7 +30,7 @@ const privacySchema = z.object({
 const passwordConfirmSchema = z.object({ password: z.string().min(1) }).strict();
 
 export const accountRoutes = Router();
-accountRoutes.use(authenticate, memberRoles);
+accountRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 
 const transitionSchema = z.object({
   programme: z.string().trim().min(2).max(120),
@@ -46,16 +47,22 @@ accountRoutes.get('/alumni-transition', asyncHandler(async (req, res) => {
 }));
 
 accountRoutes.post('/alumni-transition', validate({ body: transitionSchema }), asyncHandler(async (req, res) => {
-  if (req.user.role !== 'student') throw badRequest('Only student accounts can request an alumni transition.');
+  const changingApprovedAlumni = req.user.role === 'alumni' && req.user.verificationStatus === 'verified';
+  if (!['student', 'alumni'].includes(req.user.role) || (req.user.role === 'alumni' && !changingApprovedAlumni)) {
+    throw badRequest('Only students moving to alumni, or verified alumni correcting approved details, can request a review.');
+  }
   const body = req.valid.body;
   if (body.graduationYear > new Date().getFullYear()) {
     throw badRequest('Choose a graduation year that has already passed.');
   }
+  if (changingApprovedAlumni && !body.evidenceUrl) {
+    throw badRequest('Attach evidence so Alumni Relations can re-verify the change.', { evidenceUrl: 'Evidence is required.' });
+  }
   try {
     const request = await db.one(
-      `insert into alumni_transition_requests (user_id, programme, graduation_year, evidence_url)
-       values ($1, $2, $3, $4) returning *`,
-      [req.user.id, body.programme, body.graduationYear, body.evidenceUrl || null],
+      `insert into alumni_transition_requests (user_id, programme, graduation_year, evidence_url, submitted_role)
+       values ($1, $2, $3, $4, $5) returning *`,
+      [req.user.id, body.programme, body.graduationYear, body.evidenceUrl || null, req.user.role],
     );
     res.status(201).json({ data: request });
   } catch (error) {
@@ -69,7 +76,8 @@ accountRoutes.get('/settings', asyncHandler(async (req, res) => {
     db.one(
       `select u.id, u.email, u.handle, u.role, u.verification_status, u.terms_accepted_version,
               u.email_verified_at, u.deactivated_at, u.mfa_enabled, u.public_profile_indexable,
-              u.privacy, p.headline, p.programme, p.graduation_year, p.avatar_url, p.avatar_alt,
+              u.featured_mentor_opt_in, u.privacy,
+              p.headline, p.programme, p.graduation_year, p.seeking_mentorship, p.avatar_url, p.avatar_alt,
               p.banner_url, p.banner_alt
        from users u join profiles p on p.user_id = u.id where u.id = $1`,
       [req.user.id],
@@ -88,16 +96,48 @@ accountRoutes.get('/settings', asyncHandler(async (req, res) => {
       verificationStatus: account.verificationStatus, termsAcceptedVersion: account.termsAcceptedVersion,
       emailVerifiedAt: account.emailVerifiedAt, deactivatedAt: account.deactivatedAt,
       mfaEnabled: account.mfaEnabled, publicProfileIndexable: account.publicProfileIndexable,
+      featuredMentorOptIn: account.featuredMentorOptIn,
     },
     profile: {
       headline: account.headline, programme: account.programme, graduationYear: account.graduationYear,
+      seekingMentorship: account.seekingMentorship,
       avatarUrl: account.avatarUrl, avatarAlt: account.avatarAlt,
       bannerUrl: account.bannerUrl, bannerAlt: account.bannerAlt,
     },
     privacy: account.privacy,
     notificationPreferences: preferences,
-    storage: { usedBytes: storage.usedBytes, assetCount: storage.assetCount, limitBytes: 2147483648 },
+    storage: { usedBytes: storage.usedBytes, assetCount: storage.assetCount, limitBytes: config.mediaStorageQuotaBytes },
   } });
+}));
+
+const mentorPreferenceSchema = z.object({
+  featuredMentorOptIn: z.boolean().optional(),
+  seekingMentorship: z.boolean().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, 'Choose at least one preference to update.');
+
+accountRoutes.patch('/mentor-preferences', validate({ body: mentorPreferenceSchema }), asyncHandler(async (req, res) => {
+  const { featuredMentorOptIn, seekingMentorship } = req.valid.body;
+  if (featuredMentorOptIn !== undefined && req.user.role !== 'alumni') {
+    throw badRequest('Only alumni can appear in the featured mentor list.');
+  }
+  if (seekingMentorship !== undefined && req.user.role !== 'student') {
+    throw badRequest('Only students can set a mentorship search preference.');
+  }
+  const row = await tx(async (t) => {
+    if (featuredMentorOptIn !== undefined) {
+      await t.run('update users set featured_mentor_opt_in = $2 where id = $1', [req.user.id, featuredMentorOptIn]);
+      await audit(t, req.user.id, 'featured_mentor_opt_in_changed', 'user', req.user.id, { enabled: featuredMentorOptIn });
+    }
+    if (seekingMentorship !== undefined) {
+      await t.run('update profiles set seeking_mentorship = $2 where user_id = $1', [req.user.id, seekingMentorship]);
+    }
+    return t.one(
+      `select u.featured_mentor_opt_in, p.seeking_mentorship
+         from users u join profiles p on p.user_id = u.id where u.id = $1`,
+      [req.user.id],
+    );
+  });
+  res.json({ data: row });
 }));
 
 accountRoutes.patch('/handle', validate({ body: handleSchema }), asyncHandler(async (req, res) => {
@@ -164,7 +204,7 @@ reactivateAccountRoutes.post('/reactivate', authenticateAllowDeactivated, member
   }));
 
 export const mediaStorageRoutes = new Router();
-mediaStorageRoutes.use(authenticate, memberRoles);
+mediaStorageRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 mediaStorageRoutes.get('/storage', asyncHandler(async (req, res) => {
   const result = await db.one(
     `select coalesce(sum(byte_size), 0)::bigint as used_bytes,
@@ -172,7 +212,7 @@ mediaStorageRoutes.get('/storage', asyncHandler(async (req, res) => {
      from media_assets where owner_user_id = $1 and status = 'confirmed'`,
     [req.user.id],
   );
-  res.json({ data: { usedBytes: result.usedBytes, assetCount: result.assetCount, limitBytes: 2147483648 } });
+  res.json({ data: { usedBytes: result.usedBytes, assetCount: result.assetCount, limitBytes: config.mediaStorageQuotaBytes } });
 }));
 
 const unavailableMedia = () => {
@@ -184,7 +224,7 @@ const uploadQuery = z.object({
 }).strict();
 
 export const mediaRoutes = new Router();
-mediaRoutes.use(authenticate, memberRoles);
+mediaRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 
 // express.json() ignores image/* bodies, so this raw parser can safely run at route level.
 mediaRoutes.post('/uploads',
@@ -199,13 +239,23 @@ mediaRoutes.post('/uploads',
       });
     }
     const { altText } = parsedQuery.data;
-    const contentType = req.headers['content-type']?.split(';')[0]?.trim().toLowerCase();
-    if (!SUPPORTED_IMAGE_TYPES.includes(contentType)) {
-      throw badRequest('Please upload a JPEG, PNG or WebP image.', { file: 'Use a JPEG, PNG or WebP image.' }, 'unsupported_image_type');
-    }
     const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
     if (!bytes.length || bytes.length > config.mediaMaxBytes) {
-      throw badRequest('Please choose an image under 5 MB.', { file: 'The image is too large.' }, 'image_too_large');
+      throw badRequest(`Please choose an image under ${Math.floor(config.mediaMaxBytes / (1024 * 1024))} MB.`, { file: 'The image is too large.' }, 'image_too_large');
+    }
+    // The declared Content-Type only selects the parser; the stored type comes
+    // from the bytes themselves so a script cannot masquerade as an image.
+    const contentType = detectImageContentType(bytes);
+    if (!contentType || !SUPPORTED_IMAGE_TYPES.includes(contentType)) {
+      throw badRequest('Please upload a JPEG, PNG or WebP image.', { file: 'Use a JPEG, PNG or WebP image.' }, 'unsupported_image_type');
+    }
+    const usage = await db.one(
+      `select coalesce(sum(byte_size), 0)::bigint as used_bytes
+       from media_assets where owner_user_id = $1 and status in ('confirmed', 'pending')`,
+      [req.user.id],
+    );
+    if (usage.usedBytes + bytes.length > config.mediaStorageQuotaBytes) {
+      throw new AppError(413, 'storage_quota_exceeded', 'Your media storage quota is full. Remove an image and try again.');
     }
     const objectKey = await provider.put(contentType, bytes);
     try {
@@ -259,8 +309,49 @@ mediaRoutes.delete('/:id', validate({ params: idParam, body: z.object({}).strict
     res.status(204).end();
   }));
 
+const profileMediaSchema = z.object({
+  avatarAssetId: z.string().uuid().nullable().optional(),
+  bannerAssetId: z.string().uuid().nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length > 0, 'Choose an image to update.');
+
+// Attach a confirmed upload to the profile. Only owned assets are accepted, and
+// the alt text travels with the asset so screen-reader text cannot drift.
+mediaRoutes.patch('/profile-media', validate({ body: profileMediaSchema }), asyncHandler(async (req, res) => {
+  const body = req.valid.body;
+  const profile = await tx(async (t) => {
+    const sets = [];
+    const params = [req.user.id];
+    for (const [field, urlColumn, altColumn] of [
+      ['avatarAssetId', 'avatar_url', 'avatar_alt'],
+      ['bannerAssetId', 'banner_url', 'banner_alt'],
+    ]) {
+      if (!(field in body)) continue;
+      let url = null;
+      let alt = null;
+      if (body[field]) {
+        const asset = await t.one(
+          `select id, alt_text from media_assets
+           where id = $1 and owner_user_id = $2 and status = 'confirmed'`,
+          [body[field], req.user.id],
+        );
+        if (!asset) throw notFound('We could not find that upload.');
+        url = `/api/v2/media/${asset.id}/file`;
+        alt = asset.altText;
+      }
+      params.push(url, alt);
+      sets.push(`${urlColumn} = $${params.length - 1}, ${altColumn} = $${params.length}`);
+    }
+    return t.one(
+      `update profiles set ${sets.join(', ')}, updated_at = now()
+       where user_id = $1 returning avatar_url, avatar_alt, banner_url, banner_alt`,
+      params,
+    );
+  });
+  res.json({ data: profile });
+}));
+
 export const mfaSettingsRoutes = new Router();
-mfaSettingsRoutes.use(authenticate, memberRoles);
+mfaSettingsRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 mfaSettingsRoutes.get('/mfa', asyncHandler(async (req, res) => {
   const state = await db.one(
     `select u.mfa_enabled,

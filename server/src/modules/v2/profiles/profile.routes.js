@@ -7,10 +7,11 @@ import { badRequest, conflict, forbidden, notFound } from '../../../utils/errors
 import { asyncHandler } from '../../../utils/http.js';
 import { httpUrl, idParam, pagingShape } from '../../../utils/schemas.js';
 import { isBlocked, isConnected } from '../../shared/relations.js';
-import { PROFILE_COLS, USER_COLS } from '../../shared/sql.js';
+import { PROFILE_COLS, USER_COLS, profileVisibleTo } from '../../shared/sql.js';
 import { toPublicProfile } from '../../shared/serializers.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
-import { recordProfileView } from '../analytics/analytics.service.js';
+import { scheduleProfileView } from '../analytics/analytics.service.js';
+import { publishNotification } from '../notifications/notifications.service.js';
 
 const visibility = z.enum(['private', 'connections', 'public']);
 const optionalDate = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Enter a valid date.')
@@ -214,19 +215,41 @@ endorsementRouter.post('/:id/skills/:skill/endorse', validate({ params: endorsem
     throw notFound('You can endorse skills only for an accepted connection.');
   }
   const owner = await db.one(
-    `select u.id from users u
+    `select u.id, p.skills from users u join profiles p on p.user_id = u.id
      where u.id = $1 and u.status = 'active' and u.deactivated_at is null
-       and u.verification_status = 'verified'`,
+       and u.verification_status = 'verified' and u.role in ('student', 'alumni')
+       and coalesce((u.privacy->>'discoverable')::boolean, true)`,
     [ownerId],
   );
   if (!owner) throw notFound('We could not find that person.');
-  const endorsement = await db.one(
-    `insert into skill_endorsements (owner_user_id, endorser_user_id, skill)
-     values ($1, $2, $3)
-     on conflict (owner_user_id, endorser_user_id, skill_normalized) do nothing
-     returning id, owner_user_id, endorser_user_id, skill, created_at`,
-    [ownerId, req.user.id, skill],
-  );
+  if (!(owner.skills || []).some((claimed) => claimed.trim().toLowerCase() === skill.trim().toLowerCase())) {
+    throw badRequest('You can endorse only skills listed on this profile.', { skill: 'Choose a skill from the profile.' });
+  }
+  const endorsement = await tx(async (t) => {
+    const row = await t.one(
+      `insert into skill_endorsements (owner_user_id, endorser_user_id, skill)
+       values ($1, $2, $3)
+       on conflict (owner_user_id, endorser_user_id, skill_normalized) do nothing
+       returning id, owner_user_id, endorser_user_id, skill, created_at`,
+      [ownerId, req.user.id, skill],
+    );
+    if (row) {
+      await publishNotification(t, {
+        userId: ownerId,
+        type: 'endorsement',
+        title: 'Your skill was endorsed',
+        body: `${req.user.firstName} ${req.user.lastName} endorsed ${row.skill} on your profile.`,
+        data: { skill: row.skill, endorsementId: row.id },
+        dedupeKey: `endorsement:${ownerId}:${req.user.id}:${row.id}`,
+        emailMessage: {
+          to: owner.email,
+          subject: 'A new endorsement on your AlumniLink profile',
+          text: `${req.user.firstName} ${req.user.lastName} endorsed ${row.skill} on your profile.`,
+        },
+      });
+    }
+    return row;
+  });
   res.status(endorsement ? 201 : 200).json({ data: endorsement || { endorsed: true } });
 }));
 endorsementRouter.delete('/:id/skills/:skill/endorse', validate({ params: endorsementParams, body: empty }), asyncHandler(async (req, res) => {
@@ -246,11 +269,12 @@ endorsementRouter.get('/:id/endorsements', validate({ params: idParam, query: en
     }
   }
   const rows = await db.all(
-    `select skill, count(*)::int as endorsement_count, count(*) over() as total
-     from skill_endorsements
-     where owner_user_id = $1
-     group by skill_normalized, skill
-     order by endorsement_count desc, skill
+    `select e.skill, count(*)::int as endorsement_count, count(*) over() as total
+     from skill_endorsements e join profiles p on p.user_id = e.owner_user_id
+     where e.owner_user_id = $1
+       and exists (select 1 from unnest(p.skills) claimed where lower(btrim(claimed)) = e.skill_normalized)
+     group by e.skill_normalized, e.skill
+     order by endorsement_count desc, e.skill
      limit $2 offset $3`,
     [targetId, req.valid.query.limit, (req.valid.query.page - 1) * req.valid.query.limit],
   );
@@ -386,7 +410,8 @@ export function profileStrength(row, sections = {}) {
 }
 
 const fullProfileRouter = Router();
-fullProfileRouter.get('/:id/full', authenticate, validate({ params: idParam }), asyncHandler(async (req, res) => {
+fullProfileRouter.get('/:id/full', authenticate, ...requireV2MemberPrerequisites,
+  validate({ params: idParam }), asyncHandler(async (req, res) => {
   const viewer = req.user;
   const row = await db.one(
     `select ${USER_COLS}, ${PROFILE_COLS}, u.status, u.deactivated_at, u.handle,
@@ -399,12 +424,8 @@ fullProfileRouter.get('/:id/full', authenticate, validate({ params: idParam }), 
   const self = row.id === viewer.id;
   const connected = !self && await isConnected(db, viewer.id, row.id);
   if (!self && (await isBlocked(db, viewer.id, row.id))) throw notFound("We couldn't find this person.");
-  if (!self && viewer.role !== 'admin') {
-    const networkOnly = row.privacy?.networkOnly === true;
-    if (row.status !== 'active' || row.deactivatedAt || row.verificationStatus !== 'verified'
-      || row.privacy?.discoverable === false || (networkOnly && !connected)) {
-      throw notFound("We couldn't find this person.");
-    }
+  if (!profileVisibleTo(row, viewer, connected, { admin: viewer.role === 'admin' })) {
+    throw notFound("We couldn't find this person.");
   }
   const full = self || viewer.role === 'admin';
   const sections = await loadVisibleSections(row.id, { full, connected });
@@ -415,9 +436,11 @@ fullProfileRouter.get('/:id/full', authenticate, validate({ params: idParam }), 
     [row.id, full, connected],
   );
   const endorsements = await db.all(
-    `select skill, count(*)::int as endorsement_count
-     from skill_endorsements where owner_user_id = $1
-     group by skill_normalized, skill order by endorsement_count desc, skill`,
+    `select e.skill, count(*)::int as endorsement_count
+     from skill_endorsements e join profiles p on p.user_id = e.owner_user_id
+     where e.owner_user_id = $1
+       and exists (select 1 from unnest(p.skills) claimed where lower(btrim(claimed)) = e.skill_normalized)
+     group by e.skill_normalized, e.skill order by endorsement_count desc, e.skill`,
     [row.id],
   );
   const recommendations = await db.all(
@@ -434,7 +457,7 @@ fullProfileRouter.get('/:id/full', authenticate, validate({ params: idParam }), 
      from connections where requester_id = $1 or recipient_id = $1`,
     [row.id],
   ) : null;
-  await recordProfileView(row.id, viewer.id);
+  scheduleProfileView(res, row.id, viewer.id);
   res.json({ data: {
     profile: toPublicProfile(row, { viewer, connected }),
     education: sections.education,

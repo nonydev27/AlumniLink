@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db, tx } from '../../db.js';
 import { authenticate } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
-import { badRequest } from '../../utils/errors.js';
+import { badRequest, conflict } from '../../utils/errors.js';
 import { asyncHandler } from '../../utils/http.js';
 import { httpUrl } from '../../utils/schemas.js';
 import { uniqueClean } from '../../utils/text.js';
@@ -14,6 +14,10 @@ import { loadProfileRow, loadSelf } from './me.service.js';
 const optText = (max) =>
   z.string().trim().max(max).transform((v) => (v === '' ? null : v)).nullable().optional();
 const optUrl = z.union([z.literal('').transform(() => null), httpUrl]).nullable().optional();
+// Avatars and banners come from the user's own media library, never arbitrary hosts.
+const mediaUrl = z.string().trim()
+  .regex(/^\/api\/v2\/media\/[0-9a-f-]{36}\/file$/i, 'Choose an image from your uploads.');
+const optMediaUrl = z.union([z.literal('').transform(() => null), mediaUrl]).nullable().optional();
 const tagList = z.array(z.string().trim().min(1).max(40)).max(25).optional();
 
 const profileSchema = z
@@ -35,20 +39,33 @@ const profileSchema = z
     linkedinUrl: optUrl,
     phone: z.string().trim().max(30).regex(/^[+0-9()\-\s]*$/, 'Use digits, spaces and + - ( ) only.')
       .transform((v) => (v === '' ? null : v)).nullable().optional(),
-    avatarUrl: optUrl,
+    avatarUrl: optMediaUrl,
     avatarAlt: optText(200),
-    bannerUrl: optUrl,
+    bannerUrl: optMediaUrl,
     bannerAlt: optText(300),
   })
   .strict();
 
-const PROFILE_COLUMNS = {
+export const PROFILE_WRITE_COLUMNS = Object.freeze({
   headline: 'headline', bio: 'bio', programme: 'programme', graduationYear: 'graduation_year',
   currentCompany: 'current_company', jobTitle: 'job_title', industry: 'industry', location: 'location',
   skills: 'skills', interests: 'interests', careerGoals: 'career_goals', willingToMentor: 'willing_to_mentor',
   linkedinUrl: 'linkedin_url', phone: 'phone', avatarUrl: 'avatar_url', avatarAlt: 'avatar_alt',
-};
-const USER_COLUMNS = { firstName: 'first_name', lastName: 'last_name', bannerUrl: 'banner_url', bannerAlt: 'banner_alt' };
+  // Migration 007 added banner metadata to profiles, not users.
+  bannerUrl: 'banner_url', bannerAlt: 'banner_alt',
+});
+export const USER_WRITE_COLUMNS = Object.freeze({ firstName: 'first_name', lastName: 'last_name' });
+
+/** Approved alumni identity is immutable until a reviewed alumni transition request applies it. */
+export function assertProfileIdentityWritable(user, body) {
+  if (user?.role === 'alumni' && user?.verificationStatus === 'verified'
+    && ('programme' in body || 'graduationYear' in body)) {
+    throw conflict(
+      'Your programme and graduation year are locked after alumni approval. Submit an alumni transition request to change them.',
+      'identity_reverification_required',
+    );
+  }
+}
 
 const preferencesSchema = z
   .object({
@@ -64,6 +81,8 @@ const preferencesSchema = z
 const privacySchema = z
   .object({
     discoverable: z.boolean(),
+    networkOnly: z.boolean(),
+    searchEngineIndexing: z.boolean(),
     showEmployer: z.boolean(),
     showLocation: z.boolean(),
     shareContactWithConnections: z.boolean(),
@@ -93,16 +112,27 @@ meRoutes.get('/', asyncHandler(async (req, res) => {
 meRoutes.patch('/profile', validate({ body: profileSchema }), asyncHandler(async (req, res) => {
   const body = { ...req.valid.body };
   for (const key of ['skills', 'interests', 'careerGoals']) if (body[key]) body[key] = uniqueClean(body[key]);
+  assertProfileIdentityWritable(req.user, body);
+
+  for (const [field, errorField] of [['avatarUrl', 'avatar'], ['bannerUrl', 'banner']]) {
+    const assetId = typeof body[field] === 'string' ? body[field].match(/^\/api\/v2\/media\/([0-9a-f-]{36})\/file$/i)?.[1] : null;
+    if (!assetId) continue;
+    const owned = await db.one(
+      `select 1 as ok from media_assets where id = $1 and owner_user_id = $2 and status = 'confirmed'`,
+      [assetId, req.user.id],
+    );
+    if (!owned) throw badRequest('Choose one of your own uploaded images.', { [errorField]: 'Choose an uploaded image.' });
+  }
 
   if (body.graduationYear && req.user.role === 'alumni' && body.graduationYear > new Date().getFullYear()) {
     throw badRequest('Alumni must have already graduated. Choose a past year.', { graduationYear: 'Choose a past year.' });
   }
 
   await tx(async (t) => {
-    const u = buildSet(body, USER_COLUMNS);
+    const u = buildSet(body, USER_WRITE_COLUMNS);
     if (u.sets.length) await t.run(`update users set ${u.sets.join(', ')} where id = $1`, [req.user.id, ...u.params]);
 
-    const p = buildSet(body, PROFILE_COLUMNS);
+    const p = buildSet(body, PROFILE_WRITE_COLUMNS);
     if ('graduationYear' in body) { // batch always follows the graduation year
       p.params.push(String(body.graduationYear));
       p.sets.push(`batch = $${1 + p.params.length}`);

@@ -124,20 +124,33 @@ adminRoutes.patch('/users/:id/status', validate({
 
 // ---------------------------------------------------------------- reports / content moderation
 adminRoutes.get('/reports', validate({
-  query: z.object({ ...pagingShape, status: z.enum(['open', 'actioned', 'dismissed']).default('open') }),
+  query: z.object({
+    ...pagingShape,
+    status: z.enum(['open', 'actioned', 'dismissed']).default('open'),
+    targetType: z.enum(['user', 'message', 'opportunity', 'group_post', 'ai_suggestion']).optional(),
+  }),
 }), asyncHandler(async (req, res) => {
   const q = req.valid.query;
   const rows = await db.all(
     `select r.id, r.target_type, r.target_id, r.reason, r.details, r.status, r.created_at, r.resolution_note,
+            r.content_snapshot, r.target_author_id, r.resolved_by, r.resolved_at,
             ru.id as reporter_id, ru.first_name as reporter_first_name, ru.last_name as reporter_last_name,
+            au.first_name as author_first_name, au.last_name as author_last_name,
             count(*) over() as total
-       from reports r left join users ru on ru.id = r.reporter_id
-      where r.status = $1 order by r.created_at asc limit $2 offset $3`,
-    [q.status, q.limit, offsetOf(q)],
+       from reports r
+       left join users ru on ru.id = r.reporter_id
+       left join users au on au.id = r.target_author_id
+      where r.status = $1 and ($2::text is null or r.target_type = $2)
+      order by r.created_at asc limit $3 offset $4`,
+    [q.status, q.targetType || null, q.limit, offsetOf(q)],
   );
   res.json(paginated(rows, q, (r) => ({
     id: r.id, targetType: r.targetType, targetId: r.targetId, reason: r.reason, details: r.details, status: r.status,
-    createdAt: r.createdAt, resolutionNote: r.resolutionNote,
+    createdAt: r.createdAt, resolutionNote: r.resolutionNote, contentSnapshot: r.contentSnapshot || {},
+    resolvedBy: r.resolvedBy, resolvedAt: r.resolvedAt,
+    author: r.targetAuthorId ? {
+      id: r.targetAuthorId, firstName: r.authorFirstName, lastName: r.authorLastName,
+    } : null,
     reporter: r.reporterId ? { id: r.reporterId, firstName: r.reporterFirstName, lastName: r.reporterLastName } : null,
   })));
 }));
@@ -152,6 +165,8 @@ const HIDE = {
   message: "update messages set status = 'hidden' where id = $1",
   opportunity: "update opportunities set status = 'hidden' where id = $1",
   group_post: "update group_posts set status = 'hidden' where id = $1",
+  // Hiding an AI suggestion means it is no longer served to its owner.
+  ai_suggestion: "update ai_suggestions set status = 'dismissed' where id = $1 and status = 'shown'",
 };
 
 adminRoutes.patch('/reports/:id', validate({
@@ -165,7 +180,10 @@ adminRoutes.patch('/reports/:id', validate({
 }), asyncHandler(async (req, res) => {
   const { action, hideContent, suspendUser, note } = req.valid.body;
   const result = await tx(async (t) => {
-    const report = await t.one('select id, target_type, target_id, status from reports where id = $1 for update', [req.valid.params.id]);
+    const report = await t.one(
+      'select id, target_type, target_id, status, content_snapshot from reports where id = $1 for update',
+      [req.valid.params.id],
+    );
     if (!report) throw notFound('We could not find that report.');
     if (report.status !== 'open') throw conflict('This report has already been handled.', 'already_handled');
 
@@ -194,10 +212,48 @@ adminRoutes.patch('/reports/:id', validate({
         where id = $1 returning id, status, resolved_at`,
       [report.id, action === 'dismiss' ? 'dismissed' : 'actioned', req.user.id, note || null],
     );
-    await audit(t, req.user.id, `report_${action}`, 'report', report.id, { hideContent, suspendUser });
+    await audit(t, req.user.id, `report_${action}`, 'report', report.id, {
+      hideContent, suspendUser, targetType: report.targetType, targetId: report.targetId,
+      snapshotKeys: Object.keys(report.contentSnapshot || {}),
+    });
     return updated;
   });
   res.json({ report: result });
+}));
+
+// ---------------------------------------------------------------- audit trail
+adminRoutes.get('/audit', validate({
+  query: z.object({
+    ...pagingShape,
+    actorId: z.string().uuid().optional(),
+    action: z.string().trim().min(1).max(80).optional(),
+    entity: z.string().trim().min(1).max(60).optional(),
+    entityId: z.string().uuid().optional(),
+  }),
+}), asyncHandler(async (req, res) => {
+  const q = req.valid.query;
+  const params = [];
+  const add = (v) => { params.push(v); return `$${params.length}`; };
+  const where = ['true'];
+  if (q.actorId) where.push(`a.actor_id = ${add(q.actorId)}`);
+  if (q.action) where.push(`a.action = ${add(q.action)}`);
+  if (q.entity) where.push(`a.entity = ${add(q.entity)}`);
+  if (q.entityId) where.push(`a.entity_id = ${add(q.entityId)}`);
+  const rows = await db.all(
+    `select a.id, a.actor_id, a.action, a.entity, a.entity_id, a.meta, a.created_at,
+            u.first_name as actor_first_name, u.last_name as actor_last_name,
+            count(*) over() as total
+       from audit_log a left join users u on u.id = a.actor_id
+      where ${where.join(' and ')}
+      order by a.created_at desc, a.id desc
+      limit ${add(q.limit)} offset ${add(offsetOf(q))}`,
+    params,
+  );
+  res.json(paginated(rows, q, (r) => ({
+    id: r.id, actorId: r.actorId, action: r.action, entity: r.entity, entityId: r.entityId,
+    meta: r.meta || {}, createdAt: r.createdAt,
+    actor: r.actorId ? { id: r.actorId, firstName: r.actorFirstName, lastName: r.actorLastName } : null,
+  })));
 }));
 
 // ---------------------------------------------------------------- overview

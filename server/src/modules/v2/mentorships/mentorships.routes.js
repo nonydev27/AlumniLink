@@ -4,12 +4,12 @@ import { db } from '../../../db.js';
 import { authenticate, requireRole } from '../../../middleware/auth.js';
 import { validate } from '../../../middleware/validate.js';
 import { asyncHandler } from '../../../utils/http.js';
-import { idParam, pagingShape } from '../../../utils/schemas.js';
+import { hybridPagingShape, idParam } from '../../../utils/schemas.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
 import { listMentorships, updateMentorship } from './mentorships.service.js';
 
 const listSchema = z.object({
-  ...pagingShape,
+  ...hybridPagingShape,
   role: z.enum(['mentor', 'mentee']).optional(),
   status: z.enum(['active', 'paused', 'completed']).optional(),
 });

@@ -10,5 +10,12 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  // Local development talks to the live API; production uses VITE_API_BASE_URL
+  // or a reverse proxy in front of both services.
+  server: {
+    proxy: {
+      '/api': { target: process.env.API_PROXY_TARGET || 'http://localhost:4000', changeOrigin: true },
+    },
+  },
 })
 

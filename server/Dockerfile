@@ -6,4 +6,5 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit
 COPY . .
 USER node
 EXPOSE 4000
-CMD ["sh", "-c", "node scripts/migrate.js && node src/server.js"]
+# Migrations are a one-shot service in compose; a single image serves API and workers.
+CMD ["node", "src/server.js"]

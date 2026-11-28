@@ -13,6 +13,12 @@ PostgreSQL advisory lock, and applies each migration transactionally.
 | `003_notifications_and_mentorship.sql` | Notification preferences, in-app notifications, durable provider outbox/delivery attempts, and connection-backed mentorship lifecycle. |
 | `004_profiles_and_recommendations.sql` | Profile education, experience, projects/publications, career preferences, privacy visibility, handles/public-consent flags, skill endorsements, and recommendation requests/publication state. |
 | `005_media_analytics_account_settings.sql` | Non-destructive deactivation state, provider-neutral confirmed media metadata, and pseudonymous profile-view/search-appearance event inputs. |
+| `006_auth_epoch_and_analytics_rollup.sql` | Auth-epoch columns and daily aggregate table for the 30-day analytics rollup. |
+| `007_public_profile_details.sql` | Public-index consent, batch banner metadata and public profile fields. |
+| `008_alumni_transition_requests.sql` | Reviewed student-to-alumni and alumni identity-correction requests. |
+| `009_lock_verified_alumni_identity.sql` | Database trigger making approved alumni identity immutable except through an approved transition request. |
+| `010_moderation_and_mentorship.sql` | Report content snapshots, two-sided completion state, soft-delete statuses, append-only audit trigger and stale-endorsement cleanup. |
+| `011_saved_opportunities.sql` | Durable opportunity bookmarks and submitted-role provenance for transition reviews. |
 
 These are additive migrations: no v1 table or column is dropped or narrowed.
 Legacy users get `auth_epoch = 0`, MFA disabled, and unknown email/terms/
@@ -80,8 +86,10 @@ their prior values. No student index/reference number is modeled.
   and must not create fabricated uploads or storage totals.
 - Analytics events store a 32-byte application-generated HMAC digest rather
   than a raw viewer ID, IP address, or browser fingerprint. Aggregate APIs must
-  omit viewer hashes. A scheduled cleanup must delete raw event rows older than
-  30 days; the schema does not claim that cleanup is automatic.
+  omit viewer hashes. `scripts/rollup-analytics.js` must run as a scheduled
+  service (provided in `docker-compose.yml`) to aggregate and delete raw event
+  rows older than 30 days; the schema does not do this by itself. Reads never
+  wait on analytics writes.
 - Fit-score storage in the existing v1 suggestion table is unchanged for
   compatibility. API serializers must continue returning qualitative fit
   labels and explanations only, never raw scores or percentages.

@@ -1,14 +1,15 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { config } from '../../../config.js';
 import { db, tx } from '../../../db.js';
 import { ensureBatchGroup } from '../../groups/batchGroups.js';
+import { finalizeStudentIdentity } from '../../shared/institution.js';
 import { loadSelf } from '../../me/me.service.js';
 import { refresh as v1Refresh, logout as v1Logout } from '../../auth/auth.service.js';
 import { AppError, conflict, unauthorized } from '../../../utils/errors.js';
 import { accessTokenExpiry, newRefreshToken, hashToken, signAccessToken } from '../../../utils/tokens.js';
-import { getEmailDeliveryProvider } from './email-provider.js';
 import { createEmailAction, consumeEmailAction } from './email-actions.js';
+import { publishNotification } from '../notifications/notifications.service.js';
 
 const DUMMY_HASH = bcrypt.hashSync('alumnilink-dummy-password', config.bcryptRounds);
 const EMAIL_TAKEN = () => conflict(
@@ -61,7 +62,6 @@ function suggestedHandle(firstName, lastName) {
 export async function registerV2(input, {
   database = db,
   transaction = tx,
-  provider = getEmailDeliveryProvider(),
   meta = {},
   loadUser = loadSelf,
 } = {}) {
@@ -69,19 +69,20 @@ export async function registerV2(input, {
   if (await database.one('select 1 as ok from users where lower(email) = $1', [input.email])) throw EMAIL_TAKEN();
 
   const passwordHash = await bcrypt.hash(input.password, config.bcryptRounds);
-  const isAlumni = input.role === 'alumni';
 
   try {
     return await transaction(async (t) => {
       const handle = suggestedHandle(input.firstName, input.lastName);
+      // Nobody is network-verified at sign-up. Students are finalized only after
+      // email verification against an approved institution domain; alumni stay
+      // pending until Alumni Relations reviews them.
       const user = await t.one(
         `insert into users
            (email, password_hash, role, first_name, last_name, handle,
             verification_status, verified_at, terms_accepted_version, terms_accepted_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+         values ($1, $2, $3, $4, $5, $6, 'pending', null, $7, now())
          returning id, role, auth_epoch`,
-        [input.email, passwordHash, input.role, input.firstName, input.lastName, handle,
-          isAlumni ? 'pending' : 'verified', isAlumni ? null : new Date(), version],
+        [input.email, passwordHash, input.role, input.firstName, input.lastName, handle, version],
       );
       await t.run(
         'insert into profiles (user_id, programme, graduation_year, batch) values ($1, $2, $3, $4)',
@@ -107,7 +108,9 @@ export async function registerV2(input, {
         verification: {
           required: true,
           expiresAt: verification.expiresAt,
-          delivery: provider?.send ? 'queued_for_delivery' : 'queued_no_provider',
+          // Durable intent, independent of the API's provider setting: the
+          // worker is the only component that can claim delivery capability.
+          delivery: 'queued',
         },
         message: 'Check your email to confirm your address. Your account is ready to use once you verify.',
       };
@@ -118,9 +121,41 @@ export async function registerV2(input, {
   }
 }
 
+/**
+ * Security notice for a genuinely new user agent, at most once per device per
+ * day. User agents are untrusted display text, never a device identifier.
+ */
+async function warnOnNewDevice(transaction, user, meta) {
+  const userAgent = String(meta.userAgent || 'unknown').slice(0, 255);
+  const seenBefore = await transaction.one(
+    'select 1 as ok from refresh_tokens where user_id = $1 and user_agent = $2 limit 1',
+    [user.id, userAgent],
+  );
+  const hasHistory = await transaction.one(
+    'select 1 as ok from refresh_tokens where user_id = $1 limit 1',
+    [user.id],
+  );
+  if (!hasHistory || seenBefore) return;
+  const fingerprint = createHash('sha256').update(userAgent).digest('hex').slice(0, 16);
+  const day = new Date().toISOString().slice(0, 10);
+  await publishNotification(transaction, {
+    userId: user.id,
+    type: 'new_device_sign_in',
+    title: 'New sign-in detected',
+    body: 'Your account was signed in from a device we have not seen before. If this was not you, reset your password.',
+    data: { userAgent, detectedOn: day },
+    dedupeKey: `new-device:${user.id}:${fingerprint}:${day}`,
+    emailMessage: {
+      to: user.email,
+      subject: 'New sign-in on your AlumniLink account',
+      text: 'We noticed a sign-in from a device we have not seen before. If this was not you, reset your password from the sign-in page.',
+    },
+  });
+}
+
 export async function loginV2({ email, password }, meta = {}, { transaction = tx } = {}) {
   const user = await db.one(
-    `select id, role, password_hash, status, email_verified_at, terms_accepted_version
+    `select id, email, role, password_hash, status, email_verified_at, terms_accepted_version
      from users where lower(email) = $1`,
     [email],
   );
@@ -131,6 +166,10 @@ export async function loginV2({ email, password }, meta = {}, { transaction = tx
   }
   return transaction(async (t) => {
     await t.run('update users set last_login_at = now() where id = $1', [user.id]);
+    await warnOnNewDevice(t, user, meta);
+    // A domain may have been approved after the address was verified, so
+    // reconcile student identity on each successful sign-in as well.
+    if (user.emailVerifiedAt) await finalizeStudentIdentity(t, user.id, user.email);
     return {
       user: await loadSelf(user.id, t),
       tokens: await issueTokens(t, user, meta),
@@ -154,6 +193,7 @@ export async function verifyEmailV2(token, { transaction = tx } = {}) {
     const row = await consumeEmailAction(t, { purpose: 'verify_email', token });
     if (!row) throw badEmailToken();
     await t.run('update users set email_verified_at = now() where id = $1', [row.userId]);
+    await finalizeStudentIdentity(t, row.userId, row.emailAddress);
     return row;
   });
   return { verified: true, email: claimed.emailAddress };

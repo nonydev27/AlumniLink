@@ -30,7 +30,7 @@ Students graduate without ever speaking to someone already working in their fiel
 
 ## 2. Core features
 
-1. **Verified accounts:** sign up with graduation year, programme, batch and index number. Alumni are verified by the Alumni Relations Office.
+1. **Verified accounts:** sign up with graduation year and programme. Students confirm a verified institutional email address against the admin-reviewed domain catalog; alumni are reviewed by the Alumni Relations Office. No student index or reference number is collected.
 2. **Smart directory:** browse and search by batch and programme.
 3. **Rich profiles:** current work, skills, interests, career goals, willingness to mentor.
 4. **Advanced search:** filter by industry, company, programme, batch, location and "open to mentoring".
@@ -110,9 +110,11 @@ All interactive targets are at least 44×44px.
 
 ## 7. Backend handover
 
-The frontend currently uses a mock data layer (`client/src/lib/store.tsx`) persisted to `localStorage`, seeded from `client/src/data/seed.ts`. Each store action maps 1:1 to a REST endpoint. The domain types in `client/src/types.ts` are the API contract. The rule-based AI in `client/src/lib/ai.ts` can move server-side, but must keep the same contract: reasons, uncertain wording and honest failure.
+Authentication has moved off the mock: `client/src/lib/api.ts` calls the live v2 auth endpoints, handles token refresh, adapts server DTOs to the client view model, and supports email verification, password reset and terms acceptance links. Tokens live in `localStorage`; no credentials or demo logins are baked into the client.
 
-Required backend concerns: HTTPS, authentication with verified roles, index-number verification, consent-based privacy enforcement, moderation, and rate limiting.
+Directory, messaging, opportunities and batch screens still read seeded demo data from `client/src/lib/store.tsx` so the UI remains reviewable. Each store action maps 1:1 to a REST endpoint and must be replaced with an `apiRequest()` call before production; the signed-in user always comes from the API. The domain types in `client/src/types.ts` describe the target contract. The rule-based AI in `client/src/lib/ai.ts` can move server-side, but must keep the same contract: reasons, uncertain wording and honest failure.
+
+Required backend concerns: HTTPS, authentication with verified roles, institutional email verification plus admin review, consent-based privacy enforcement, moderation, and rate limiting.
 
 ## 8. References
 - W3C (2023). Web Content Accessibility Guidelines (WCAG) 2.2.

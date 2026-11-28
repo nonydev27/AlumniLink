@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { passwordRule } from '../../auth/auth.routes.js';
-import { loginLimiter, registerLimiter } from '../../../middleware/rateLimit.js';
+import { authActionLimiter, loginLimiter, registerLimiter } from '../../../middleware/rateLimit.js';
 import { validate } from '../../../middleware/validate.js';
 import { asyncHandler } from '../../../utils/http.js';
 import {
@@ -63,18 +63,18 @@ v2AuthRoutes.post('/logout', validate({ body: tokenSchema }), asyncHandler(async
   res.status(204).end();
 }));
 
-v2AuthRoutes.post('/verify-email', loginLimiter, validate({ body: actionTokenSchema }), asyncHandler(async (req, res) => {
+v2AuthRoutes.post('/verify-email', authActionLimiter, validate({ body: actionTokenSchema }), asyncHandler(async (req, res) => {
   res.json({ data: await verifyEmailV2(req.valid.body.token) });
 }));
 
-v2AuthRoutes.post('/resend-verification', loginLimiter, validate({ body: emailSchema }), asyncHandler(async (req, res) => {
+v2AuthRoutes.post('/resend-verification', authActionLimiter, validate({ body: emailSchema }), asyncHandler(async (req, res) => {
   res.json({ data: await resendVerificationV2(req.valid.body.email) });
 }));
 
-v2AuthRoutes.post('/forgot-password', loginLimiter, validate({ body: emailSchema }), asyncHandler(async (req, res) => {
+v2AuthRoutes.post('/forgot-password', authActionLimiter, validate({ body: emailSchema }), asyncHandler(async (req, res) => {
   res.json({ data: await forgotPasswordV2(req.valid.body.email) });
 }));
 
-v2AuthRoutes.post('/reset-password', loginLimiter, validate({ body: resetSchema }), asyncHandler(async (req, res) => {
+v2AuthRoutes.post('/reset-password', authActionLimiter, validate({ body: resetSchema }), asyncHandler(async (req, res) => {
   res.json({ data: await resetPasswordV2(req.valid.body.token, req.valid.body.newPassword) });
 }));
