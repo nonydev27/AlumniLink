@@ -7,6 +7,12 @@ async function authenticateRequest(req, { allowDeactivated = false, allowStaleDe
   const [scheme, token] = (req.headers.authorization || '').split(' ');
   if (scheme !== 'Bearer' || !token) throw unauthorized();
 
+  // Nested routers commonly re-run authentication within one request. Cache the
+  // verified user for this exact token and option set so the same row is not
+  // fetched repeatedly; a different token or option set is never reused.
+  const cacheKey = `${allowDeactivated ? 'd' : ''}${allowStaleDeactivatedToken ? 's' : ''}:${token}`;
+  if (req.authCache?.key === cacheKey) return req.authCache.user;
+
   let payload;
   try {
     payload = verifyAccessToken(token);
@@ -17,9 +23,11 @@ async function authenticateRequest(req, { allowDeactivated = false, allowStaleDe
     throw unauthorized();
   }
 
+  // One row serves authentication, role checks and v2 prerequisites. Reading
+  // the same identity three more times per request was pure latency.
   const user = await db.one(
     `select id, email, role, first_name, last_name, status, verification_status, privacy, preferences,
-            auth_epoch, deactivated_at, mfa_enabled
+            auth_epoch, deactivated_at, mfa_enabled, email_verified_at, terms_accepted_version
        from users where id = $1`,
     [payload.sub],
   );
@@ -37,6 +45,7 @@ async function authenticateRequest(req, { allowDeactivated = false, allowStaleDe
   if (user.deactivatedAt && !allowDeactivated) {
     throw new AppError(403, 'account_deactivated', 'This account is deactivated. Reactivate it to continue.');
   }
+  req.authCache = { key: cacheKey, user };
   return user;
 }
 

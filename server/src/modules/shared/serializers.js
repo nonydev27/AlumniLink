@@ -71,6 +71,8 @@ export function toSelf(r) {
       interests: r.interests ?? [],
       careerGoals: r.careerGoals ?? [],
       willingToMentor: Boolean(r.willingToMentor),
+      seekingMentorship: Boolean(r.seekingMentorship),
+      featuredMentorOptIn: Boolean(r.featuredMentorOptIn),
       linkedinUrl: r.linkedinUrl ?? null,
       phone: r.phone ?? null,
       avatarUrl: r.avatarUrl ?? null,

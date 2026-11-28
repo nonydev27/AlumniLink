@@ -53,6 +53,7 @@ test('versioned schema upgrades v1 rows safely and enforces v2 data invariants',
       '008_alumni_transition_requests.sql',
       '009_lock_verified_alumni_identity.sql',
       '010_moderation_and_mentorship.sql',
+      '011_saved_opportunities.sql',
     ]);
     for (const filename of migrationFiles) {
       await client.query(await fs.readFile(path.join(migrationDir, filename), 'utf8'));

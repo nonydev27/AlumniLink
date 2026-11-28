@@ -5,7 +5,8 @@ import { authenticate, requireRole, requireVerified } from '../../middleware/aut
 import { validate } from '../../middleware/validate.js';
 import { AppError, badRequest, forbidden, notFound } from '../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
-import { boolQuery, httpUrl, idParam, pagingShape } from '../../utils/schemas.js';
+import { keysetResponse, readCursor } from '../../utils/pagination.js';
+import { boolQuery, httpUrl, hybridPagingShape, idParam } from '../../utils/schemas.js';
 import { likeEscape, uniqueClean } from '../../utils/text.js';
 import { audit } from '../shared/audit.js';
 import { CONN_LATERAL, NOT_BLOCKED, VISIBLE_PROFILE } from '../shared/sql.js';
@@ -34,7 +35,7 @@ const createSchema = z.object(baseShape).strict();
 const updateSchema = z.object({ ...baseShape, status: z.enum(['active', 'closed']) }).partial().strict();
 
 const listSchema = z.object({
-  ...pagingShape,
+  ...hybridPagingShape,
   type: z.string().optional().transform((v) => (v ? v.split(',').map((s) => s.trim()).filter((s) => TYPES.includes(s)) : [])),
   q: z.string().trim().min(1).max(100).optional(),
   industry: z.string().trim().min(1).max(100).optional(),
@@ -75,20 +76,43 @@ opportunitiesRoutes.get('/', validate({ query: listSchema }), asyncHandler(async
   if (q.location) where.push(`(o.location ilike ${add(`%${likeEscape(q.location)}%`)} or o.is_remote)`);
   if (q.remote !== undefined) where.push(`o.is_remote = ${add(q.remote)}`);
 
+  const scope = JSON.stringify({
+    type: q.type, q: q.q ?? null, industry: q.industry ?? null, location: q.location ?? null,
+    remote: q.remote ?? null, includePast: q.includePast, mine: q.mine, sort: q.sort,
+  });
+  const keysOf = (row) => {
+    const due = row.deadline ?? row.eventDate;
+    return q.sort === 'soonest'
+      ? [due ? new Date(due).toISOString() : 'infinity', row.createdAt.toISOString(), row.id]
+      : [row.createdAt.toISOString(), row.id];
+  };
+  const cursor = { audience: me.id, scope, keysOf };
+  const keys = q.cursor ? readCursor(q.cursor, cursor) : null;
+  if (keys) {
+    if (q.sort === 'soonest') {
+      where.push(`(coalesce(o.deadline, o.event_date, 'infinity'::timestamptz), o.created_at, o.id)
+                  > (${add(String(keys[0]))}::timestamptz, ${add(String(keys[1]))}::timestamptz, ${add(String(keys[2]))}::uuid)`);
+    } else {
+      where.push(`(o.created_at, o.id) < (${add(String(keys[0]))}::timestamptz, ${add(String(keys[1]))}::uuid)`);
+    }
+  }
+  // Keep all keyset tuple columns in one direction so the row comparison is valid.
   const order = q.sort === 'soonest'
-    ? 'coalesce(o.deadline, o.event_date) asc nulls last, o.created_at desc'
-    : 'o.created_at desc';
-  const limitP = add(q.limit);
-  const offsetP = add(offsetOf(q));
+    ? "coalesce(o.deadline, o.event_date, 'infinity'::timestamptz) asc, o.created_at asc, o.id asc"
+    : 'o.created_at desc, o.id desc';
+  const limitP = add(q.limit + (keys ? 1 : 0));
+  const offsetP = keys ? null : add(offsetOf(q));
 
   const rows = await db.all(
-    `select ${COLS}, count(*) over() as total
+    `select ${COLS} ${keys ? '' : ', count(*) over() as total'}
        from opportunities o join users u on u.id = o.posted_by
        ${CONN_LATERAL('$1', 'o.posted_by')}
-      where ${where.join(' and ')} order by ${order} limit ${limitP} offset ${offsetP}`,
+      where ${where.join(' and ')} order by ${order} limit ${limitP} ${keys ? '' : `offset ${offsetP}`}`,
     params,
   );
-  res.json(paginated(rows, q, toOpportunity));
+  res.json(keys
+    ? keysetResponse(rows, q, toOpportunity, cursor)
+    : paginated(rows, q, toOpportunity, cursor));
 }));
 
 opportunitiesRoutes.get('/:id', validate({ params: idParam }), asyncHandler(async (req, res) => {

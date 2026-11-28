@@ -1,14 +1,19 @@
 /* eslint-disable react-refresh/only-export-components */
-// Client-side data store for AlumniLink.
+// Client store for AlumniLink.
 //
-// Until the backend exists, this acts as a mock API: data lives in memory and is
-// persisted to localStorage so the demo survives a refresh. Each action below maps
-// 1:1 to a future REST endpoint, so swapping in real fetch calls is mechanical.
+// Authentication is live against /api/v2/auth (tokens, email verification and
+// password reset). Directory, messaging and other domain screens still render
+// seeded demo data from localStorage until their REST calls are wired; the
+// signed-in user always comes from the API and is never a demo account.
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import type {
   AppSettings, BatchPost, Connection, ConnectionKind, Conversation, Opportunity, Report, ReportTarget, User, UserState,
 } from '../types'
 import { seedBatchPosts, seedConnections, seedConversations, seedOpportunities, seedReports, seedUsers } from '../data/seed'
+import {
+  ApiError, authApi, clearTokens, getSessionExtras, getTokens, saveSession, toClientUser, updateSession,
+  type ServerUser,
+} from './api'
 
 const STORAGE_KEY = 'alumnilink-db-v1'
 
@@ -52,29 +57,54 @@ const seedDB = (): DB => ({
 })
 
 function loadDB(): DB {
+  let loaded = seedDB()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...seedDB(), ...JSON.parse(raw) }
+    if (raw) loaded = { ...loaded, ...JSON.parse(raw) }
   } catch {
     /* storage unavailable or corrupt: fall back to seed */
   }
-  return seedDB()
+  // Never treat a stale mock session as a real login, and always seed the
+  // signed-in user from the live session before the first render.
+  if (!getTokens()) return { ...loaded, currentUserId: null }
+  const cached = getSessionExtras().user
+  if (!cached) return { ...loaded, currentUserId: null }
+  const user = toClientUser(cached)
+  return {
+    ...loaded,
+    currentUserId: user.id,
+    users: [...loaded.users.filter((u) => u.id !== user.id), user],
+  }
 }
 
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 const now = () => new Date().toISOString()
 
+/** A graduation year is shared by several programmes, so batch identity needs both. */
+export const batchKey = (year: number, programme: string) => `${year}|${programme}`
+
 export interface RegisterInput {
   role: 'student' | 'alumni'
-  name: string
+  fullName: string
   email: string
-  indexNumber: string
+  password: string
   programme: string
-  gradYear: number
+  graduationYear: number
+  acceptTerms: boolean
 }
+
+export type AuthGate = { verificationRequired: boolean; termsAcceptanceRequired: boolean }
 
 function useStoreValue() {
   const [db, setDb] = useState<DB>(loadDB)
+  const [authLoading, setAuthLoading] = useState(Boolean(getTokens()))
+  const [gate, setGate] = useState<AuthGate>(() => {
+    const saved = getSessionExtras()
+    return {
+      verificationRequired: Boolean(saved.verificationRequired),
+      termsAcceptanceRequired: Boolean(saved.termsAcceptanceRequired),
+    }
+  })
 
   useEffect(() => {
     try {
@@ -83,6 +113,38 @@ function useStoreValue() {
       /* ignore quota / private mode */
     }
   }, [db])
+
+  const applyUser = useCallback((serverUser?: ServerUser) => {
+    if (!serverUser) return
+    const user = toClientUser(serverUser)
+    setDb((d) => ({
+      ...d,
+      currentUserId: user.id,
+      users: [...d.users.filter((u) => u.id !== user.id), user],
+    }))
+  }, [])
+
+  const applyGate = useCallback((next: AuthGate) => {
+    updateSession(next)
+    setGate(next)
+  }, [])
+
+  useEffect(() => {
+    if (!getTokens()) return
+    let active = true
+    authApi.self()
+      .then(({ user }) => { if (active) applyUser(user) })
+      .catch((error: unknown) => {
+        if (!active) return
+        // 403 is expected while email verification or current terms are pending.
+        if (error instanceof ApiError && error.status === 401) {
+          clearTokens()
+          setDb((d) => ({ ...d, currentUserId: null }))
+        }
+      })
+      .finally(() => { if (active) setAuthLoading(false) })
+    return () => { active = false }
+  }, [applyUser])
 
   const me = db.users.find((x) => x.id === db.currentUserId) ?? null
   const myState = (me && db.userState[me.id]) || emptyUserState()
@@ -96,45 +158,57 @@ function useStoreValue() {
   }, [])
 
   const actions = {
-    // ---- Auth ----
-    login(email: string): User | null {
-      const user = db.users.find((x) => x.email.toLowerCase() === email.trim().toLowerCase()) ?? null
-      if (user) setDb((d) => ({ ...d, currentUserId: user.id }))
-      return user
-    },
-    logout() {
-      setDb((d) => ({ ...d, currentUserId: null }))
-    },
-    register(input: RegisterInput): User {
-      const user: User = {
-        id: uid('u'),
-        role: input.role,
-        name: input.name.trim(),
-        email: input.email.trim().toLowerCase(),
-        indexNumber: input.indexNumber.trim(),
-        programme: input.programme,
-        gradYear: input.gradYear,
-        headline: input.role === 'student' ? `${input.programme} student` : `${input.programme} graduate`,
-        bio: '',
-        location: '',
-        skills: [],
-        interests: [],
-        careerGoals: '',
-        mentoring: false,
-        // Alumni are verified by the Alumni Relations Office. Students are verified
-        // against their index number by the backend; the demo trusts it.
-        verification: input.role === 'alumni' ? 'pending' : 'verified',
-        avatarColor: 'bg-brand-100 text-brand-800',
-        privacy: { showEmailToConnections: true, showCompany: true, allowMessagesFrom: 'everyone' },
-        joinedAt: now(),
+    // ---- Live auth (v2 API) ----
+    async login(email: string, password: string): Promise<AuthGate> {
+      const result = await authApi.login(email, password)
+      const { user, tokens } = result.data
+      if (!user) throw new Error('The server did not return your account details.')
+      const next: AuthGate = {
+        verificationRequired: result.data.verificationRequired === true,
+        termsAcceptanceRequired: result.data.termsAcceptanceRequired === true,
       }
-      setDb((d) => ({
-        ...d,
-        users: [...d.users, user],
-        currentUserId: user.id,
-        userState: { ...d.userState, [user.id]: { ...emptyUserState(), joinedBatches: [input.gradYear] } },
-      }))
-      return user
+      saveSession(tokens, { user, ...next })
+      applyUser(user)
+      applyGate(next)
+      return next
+    },
+    async register(input: RegisterInput) {
+      const result = await authApi.register({
+        role: input.role,
+        fullName: input.fullName,
+        email: input.email,
+        password: input.password,
+        programme: input.programme,
+        graduationYear: input.graduationYear,
+        acceptTerms: input.acceptTerms,
+      })
+      const user = result.data.user
+      const next: AuthGate = { verificationRequired: true, termsAcceptanceRequired: false }
+      saveSession(result.data.tokens, { user, ...next })
+      applyUser(user)
+      applyGate(next)
+      return result.data
+    },
+    async logout() {
+      await authApi.logout()
+      setDb((d) => ({ ...d, currentUserId: null }))
+      setGate({ verificationRequired: false, termsAcceptanceRequired: false })
+    },
+    async markVerified(): Promise<AuthGate> {
+      const next = { ...gate, verificationRequired: false }
+      applyGate(next)
+      try {
+        const { user } = await authApi.self()
+        updateSession({ user })
+        applyUser(user)
+      } catch { /* terms may still be pending; the cached profile is enough */ }
+      return next
+    },
+    async acceptCurrentTerms(): Promise<AuthGate> {
+      await authApi.acceptTerms()
+      const next = { ...gate, termsAcceptanceRequired: false }
+      applyGate(next)
+      return next
     },
     updateProfile(patch: Partial<User>) {
       setDb((d) => ({ ...d, users: d.users.map((x) => (x.id === d.currentUserId ? { ...x, ...patch, id: x.id, role: x.role, verification: x.verification } : x)) }))
@@ -222,11 +296,14 @@ function useStoreValue() {
     },
 
     // ---- Batch groups ----
-    toggleJoinBatch(year: number) {
-      patchMyState((s) => ({ ...s, joinedBatches: s.joinedBatches.includes(year) ? s.joinedBatches.filter((y) => y !== year) : [...s.joinedBatches, year] }))
+    toggleJoinBatch(key: string) {
+      patchMyState((s) => ({ ...s, joinedBatches: s.joinedBatches.includes(key) ? s.joinedBatches.filter((y) => y !== key) : [...s.joinedBatches, key] }))
     },
-    addBatchPost(gradYear: number, body: string) {
-      setDb((d) => (d.currentUserId && body.trim() ? { ...d, batchPosts: [{ id: uid('p'), gradYear, authorId: d.currentUserId, body: body.trim(), createdAt: now() }, ...d.batchPosts] } : d))
+    addBatchPost(gradYear: number, programme: string, body: string) {
+      setDb((d) => (d.currentUserId && body.trim() ? {
+        ...d,
+        batchPosts: [{ id: uid('p'), gradYear, programme, authorId: d.currentUserId, body: body.trim(), createdAt: now() }, ...d.batchPosts],
+      } : d))
     },
     deleteBatchPost(id: string) {
       setDb((d) => ({ ...d, batchPosts: d.batchPosts.filter((p) => p.id !== id) }))
@@ -261,7 +338,7 @@ function useStoreValue() {
     },
   }
 
-  return { db, me, myState, ...actions }
+  return { db, me, myState, authLoading, gate, ...actions }
 }
 
 type Store = ReturnType<typeof useStoreValue>

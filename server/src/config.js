@@ -2,6 +2,11 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const bool = (def) => z.enum(['true', 'false']).default(def).transform((v) => v === 'true');
+// Non-production falls back to clearly-labelled development keys so `npm test`
+// and `npm run dev` work out of the box. Production rejects these placeholders.
+const secret = (name, devValue) => (devValue
+  ? z.string().min(32, `${name} must be at least 32 characters`).default(devValue)
+  : z.string().min(32, `${name} must be at least 32 characters`));
 
 const byteSize = z.coerce.number().int().min(1024).max(20 * 1024 * 1024);
 const storageQuota = z.coerce.number().int().min(1024).max(10 * 1024 * 1024 * 1024);
@@ -13,7 +18,12 @@ const schema = z.object({
   DATABASE_SSL: bool('false'),
   DATABASE_SSL_REJECT_UNAUTHORIZED: bool('true'),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
-  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
+  // Separate signing domains: rotating sessions must not invalidate live email
+  // links or rewrite the pseudonymous analytics key space.
+  EMAIL_TOKEN_SECRET: secret('EMAIL_TOKEN_SECRET', 'dev-only-email-token-secret-change-me-0123456789'),
+  ANALYTICS_HMAC_SECRET: secret('ANALYTICS_HMAC_SECRET', 'dev-only-analytics-hmac-secret-change-me-0123456789'),
+  CURSOR_HMAC_SECRET: secret('CURSOR_HMAC_SECRET', 'dev-only-cursor-hmac-secret-change-me-0123456789'),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   CLIENT_ORIGINS: z.string().default('http://localhost:5173'),
@@ -36,6 +46,10 @@ const schema = z.object({
   // Zero means no message text ever leaves the API in an email or outbox payload.
   EMAIL_MESSAGE_PREVIEW_MAX_CHARS: z.coerce.number().int().min(0).max(240).default(0),
   NOTIFICATION_WORKER_POLL_MS: z.coerce.number().int().min(0).max(60000).default(15000),
+  ANALYTICS_ROLLUP_INTERVAL_MS: z.coerce.number().int().min(60_000).max(7 * 24 * 60 * 60 * 1000).default(24 * 60 * 60 * 1000),
+  // Analytics never blocks a read. "async" starts work after the response,
+  // "none" disables event collection, "inline" is for small deployments/tests.
+  ANALYTICS_EVENTS: z.enum(['none', 'async', 'inline']).default('async'),
 
   STORAGE_PROVIDER: z.enum(['none', 'local']).default('none'),
   STORAGE_LOCAL_DIR: z.string().trim().min(1).default('./storage/uploads'),
@@ -67,9 +81,22 @@ if (!parsed.success) {
 }
 const env = parsed.data;
 
-if (env.NODE_ENV === 'production' && /replace-with|change-me/i.test(env.JWT_ACCESS_SECRET)) {
-  console.error('JWT_ACCESS_SECRET still has its placeholder value. Set a real random secret before running in production.');
-  process.exit(1);
+if (env.NODE_ENV === 'production') {
+  const signingSecrets = [
+    ['JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET],
+    ['EMAIL_TOKEN_SECRET', env.EMAIL_TOKEN_SECRET],
+    ['ANALYTICS_HMAC_SECRET', env.ANALYTICS_HMAC_SECRET],
+    ['CURSOR_HMAC_SECRET', env.CURSOR_HMAC_SECRET],
+  ];
+  const placeholders = signingSecrets.filter(([, value]) => /replace-with|change-me/i.test(value));
+  if (placeholders.length) {
+    console.error(`Placeholder secrets are not allowed in production: ${placeholders.map(([name]) => name).join(', ')}.`);
+    process.exit(1);
+  }
+  if (new Set(signingSecrets.map(([, value]) => value)).size !== signingSecrets.length) {
+    console.error(`${signingSecrets.map(([name]) => name).join(', ')} must be four different values.`);
+    process.exit(1);
+  }
 }
 
 const trustProxy = env.TRUST_PROXY === 'true' ? true
@@ -87,6 +114,9 @@ export const config = {
   databaseSslRejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED,
   dbPoolMax: env.DB_POOL_MAX,
   jwtAccessSecret: env.JWT_ACCESS_SECRET,
+  emailTokenSecret: env.EMAIL_TOKEN_SECRET,
+  analyticsHmacSecret: env.ANALYTICS_HMAC_SECRET,
+  cursorHmacSecret: env.CURSOR_HMAC_SECRET,
   accessTokenTtl: env.ACCESS_TOKEN_TTL,
   refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
   clientOrigins: env.CLIENT_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
@@ -107,6 +137,8 @@ export const config = {
   passwordResetTtlMinutes: env.PASSWORD_RESET_TTL_MINUTES,
   emailMessagePreviewMaxChars: env.EMAIL_MESSAGE_PREVIEW_MAX_CHARS,
   notificationWorkerPollMs: env.NOTIFICATION_WORKER_POLL_MS,
+  analyticsRollupIntervalMs: env.ANALYTICS_ROLLUP_INTERVAL_MS,
+  analyticsEvents: env.ANALYTICS_EVENTS,
   storageProvider: env.STORAGE_PROVIDER,
   storageLocalDir: env.STORAGE_LOCAL_DIR,
   mediaMaxBytes: env.MEDIA_MAX_BYTES,

@@ -59,11 +59,10 @@ test('v2 signup queues verification durably without inventing email delivery', a
   const result = await registerV2(registerSchema.parse(signup), {
     database: { one: async () => null },
     transaction: async (work) => work(client),
-    provider: null, // no adapter selected
     loadUser: async () => ({ id: 'user-1' }),
   });
   assert.equal(result.verification.required, true);
-  assert.equal(result.verification.delivery, 'queued_no_provider');
+  assert.equal(result.verification.delivery, 'queued');
   assert.equal(JSON.stringify(result).includes('rawToken'), false);
   assert.equal(statements.some((sql) => sql.includes('insert into email_action_tokens')), true);
   assert.equal(statements.some((sql) => sql.includes('insert into notification_outbox')), true);
@@ -133,7 +132,7 @@ test('resend verification is non-enumerating for unknown email addresses', async
   assert.equal(transactions, 0);
 });
 
-test('notification publisher keeps in-app events and does not enqueue email without a provider', async () => {
+test('notification publisher keeps in-app events and queues email intent without a provider', async () => {
   const statements = [];
   const database = {
     one: async (sql) => {

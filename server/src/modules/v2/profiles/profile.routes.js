@@ -10,7 +10,8 @@ import { isBlocked, isConnected } from '../../shared/relations.js';
 import { PROFILE_COLS, USER_COLS, profileVisibleTo } from '../../shared/sql.js';
 import { toPublicProfile } from '../../shared/serializers.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
-import { recordProfileView } from '../analytics/analytics.service.js';
+import { scheduleProfileView } from '../analytics/analytics.service.js';
+import { publishNotification } from '../notifications/notifications.service.js';
 
 const visibility = z.enum(['private', 'connections', 'public']);
 const optionalDate = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Enter a valid date.')
@@ -224,13 +225,31 @@ endorsementRouter.post('/:id/skills/:skill/endorse', validate({ params: endorsem
   if (!(owner.skills || []).some((claimed) => claimed.trim().toLowerCase() === skill.trim().toLowerCase())) {
     throw badRequest('You can endorse only skills listed on this profile.', { skill: 'Choose a skill from the profile.' });
   }
-  const endorsement = await db.one(
-    `insert into skill_endorsements (owner_user_id, endorser_user_id, skill)
-     values ($1, $2, $3)
-     on conflict (owner_user_id, endorser_user_id, skill_normalized) do nothing
-     returning id, owner_user_id, endorser_user_id, skill, created_at`,
-    [ownerId, req.user.id, skill],
-  );
+  const endorsement = await tx(async (t) => {
+    const row = await t.one(
+      `insert into skill_endorsements (owner_user_id, endorser_user_id, skill)
+       values ($1, $2, $3)
+       on conflict (owner_user_id, endorser_user_id, skill_normalized) do nothing
+       returning id, owner_user_id, endorser_user_id, skill, created_at`,
+      [ownerId, req.user.id, skill],
+    );
+    if (row) {
+      await publishNotification(t, {
+        userId: ownerId,
+        type: 'endorsement',
+        title: 'Your skill was endorsed',
+        body: `${req.user.firstName} ${req.user.lastName} endorsed ${row.skill} on your profile.`,
+        data: { skill: row.skill, endorsementId: row.id },
+        dedupeKey: `endorsement:${ownerId}:${req.user.id}:${row.id}`,
+        emailMessage: {
+          to: owner.email,
+          subject: 'A new endorsement on your AlumniLink profile',
+          text: `${req.user.firstName} ${req.user.lastName} endorsed ${row.skill} on your profile.`,
+        },
+      });
+    }
+    return row;
+  });
   res.status(endorsement ? 201 : 200).json({ data: endorsement || { endorsed: true } });
 }));
 endorsementRouter.delete('/:id/skills/:skill/endorse', validate({ params: endorsementParams, body: empty }), asyncHandler(async (req, res) => {
@@ -438,7 +457,7 @@ fullProfileRouter.get('/:id/full', authenticate, ...requireV2MemberPrerequisites
      from connections where requester_id = $1 or recipient_id = $1`,
     [row.id],
   ) : null;
-  await recordProfileView(row.id, viewer.id);
+  scheduleProfileView(res, row.id, viewer.id);
   res.json({ data: {
     profile: toPublicProfile(row, { viewer, connected }),
     education: sections.education,

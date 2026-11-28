@@ -7,7 +7,7 @@ import { asyncHandler } from '../../utils/http.js';
 import { idParam } from '../../utils/schemas.js';
 import { CONN_LATERAL, NOT_BLOCKED, PROFILE_COLS, USER_COLS, profileVisibleTo } from '../shared/sql.js';
 import { connectionState, toPublicProfile } from '../shared/serializers.js';
-import { recordProfileView } from '../v2/analytics/analytics.service.js';
+import { scheduleProfileView } from '../v2/analytics/analytics.service.js';
 
 export const usersRoutes = Router();
 usersRoutes.use(authenticate);
@@ -30,7 +30,7 @@ usersRoutes.get('/:id', validate({ params: idParam }), asyncHandler(async (req, 
   const connected = row?.connectionStatus === 'accepted';
   if (!profileVisibleTo(row, me, connected, { admin: isAdmin })) throw notFound("We couldn't find this person.");
 
-  await recordProfileView(row.id, me.id);
+  scheduleProfileView(res, row.id, me.id);
   res.json({
     user: { ...toPublicProfile(row, { viewer: me, connected }), connection: isSelf ? null : connectionState(me.id, row) },
   });

@@ -1,10 +1,11 @@
 // Reusable SQL fragments. Table aliases: u = users, p = profiles, c = connections.
 
-export const USER_COLS = 'u.id, u.email, u.role, u.first_name, u.last_name, u.verification_status, u.privacy';
+export const USER_COLS = `u.id, u.email, u.role, u.first_name, u.last_name, u.verification_status,
+  u.privacy, u.featured_mentor_opt_in`;
 export const SELF_COLS = 'u.status, u.verification_note, u.preferences, u.created_at';
 export const PROFILE_COLS = `p.headline, p.bio, p.programme, p.graduation_year, p.batch, p.current_company,
   p.job_title, p.industry, p.location, p.skills, p.interests, p.career_goals, p.willing_to_mentor,
-  p.linkedin_url, p.phone, p.avatar_url, p.avatar_alt, p.banner_url, p.banner_alt`;
+  p.seeking_mentorship, p.linkedin_url, p.phone, p.avatar_url, p.avatar_alt, p.banner_url, p.banner_alt`;
 
 /** True when `a` and `b` are the two people of connection row `c`, in either direction. */
 export const PAIR_MATCH = (a, b) =>

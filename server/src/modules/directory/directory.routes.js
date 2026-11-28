@@ -4,16 +4,17 @@ import { db } from '../../db.js';
 import { authenticate, requireVerified } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
-import { boolQuery, pagingShape } from '../../utils/schemas.js';
+import { keysetResponse, readCursor } from '../../utils/pagination.js';
+import { boolQuery, hybridPagingShape } from '../../utils/schemas.js';
 import { likeEscape } from '../../utils/text.js';
 import { CONN_LATERAL, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE } from '../shared/sql.js';
 import { connectionState, toPublicProfile } from '../shared/serializers.js';
-import { recordSearchAppearances } from '../v2/analytics/analytics.service.js';
+import { scheduleSearchAppearances } from '../v2/analytics/analytics.service.js';
 
 const optStr = z.string().trim().min(1).max(100).optional();
 
 const searchSchema = z.object({
-  ...pagingShape,
+  ...hybridPagingShape,
   role: z.enum(['alumni', 'student', 'all']).default('alumni'),
   q: optStr,
   programme: optStr,
@@ -63,30 +64,55 @@ directoryRoutes.get('/', validate({ query: searchSchema }), asyncHandler(async (
   if (q.batch) where.push(`p.graduation_year = ${add(q.batch)}`);
   if (q.mentoring !== undefined) where.push(`p.willing_to_mentor = ${add(q.mentoring)}`);
 
+  const scope = JSON.stringify({
+    role: q.role, q: q.q ?? null, programme: q.programme ?? null, industry: q.industry ?? null,
+    company: q.company ?? null, location: q.location ?? null, skill: q.skill ?? null,
+    interest: q.interest ?? null, batch: q.batch ?? null, mentoring: q.mentoring ?? null, sort: q.sort,
+  });
+  const keysOf = (r) => (q.sort === 'batch'
+    ? [r.graduationYear ?? -1, r.lastName, r.firstName, r.id]
+    : [r.lastName, r.firstName, r.id]);
+  const cursor = { audience: me.id, scope, keysOf };
+  const keys = q.cursor ? readCursor(q.cursor, cursor) : null;
+  if (keys) {
+    if (q.sort === 'batch') {
+      where.push(`(coalesce(p.graduation_year, -1), u.last_name, u.first_name, u.id)
+                  < (${add(Number(keys[0]))}::int, ${add(String(keys[1]))}, ${add(String(keys[2]))}, ${add(String(keys[3]))}::uuid)`);
+    } else {
+      where.push(`(u.last_name, u.first_name, u.id)
+                  > (${add(String(keys[0]))}, ${add(String(keys[1]))}, ${add(String(keys[2]))}::uuid)`);
+    }
+  }
+
+  // Every key in a keyset tuple must share one direction; mixed directions
+  // cannot be expressed as a single row comparison.
   const order = q.sort === 'batch'
-    ? 'p.graduation_year desc nulls last, u.last_name, u.first_name'
-    : 'u.last_name, u.first_name';
-  const limitP = add(q.limit);
-  const offsetP = add(offsetOf(q));
+    ? 'coalesce(p.graduation_year, -1) desc, u.last_name desc, u.first_name desc, u.id desc'
+    : 'u.last_name, u.first_name, u.id';
+  const limitP = add(q.limit + (keys ? 1 : 0));
+  const offsetP = keys ? null : add(offsetOf(q));
 
   const rows = await db.all(
     `select ${USER_COLS}, ${PROFILE_COLS},
-            conn.id as connection_id, conn.status as connection_status, conn.requester_id as connection_requester_id,
-            count(*) over() as total
+            conn.id as connection_id, conn.status as connection_status, conn.requester_id as connection_requester_id
+            ${keys ? '' : ', count(*) over() as total'}
        from users u
        join profiles p on p.user_id = u.id
        ${CONN_LATERAL('$1', 'u.id')}
       where ${where.join(' and ')}
       order by ${order}
-      limit ${limitP} offset ${offsetP}`,
+      limit ${limitP} ${keys ? '' : `offset ${offsetP}`}`,
     params,
   );
 
-  await recordSearchAppearances(rows.map((row) => row.id), me.id);
-  res.json(paginated(rows, q, (r) => ({
+  scheduleSearchAppearances(res, rows.map((row) => row.id), me.id);
+  const mapRow = (r) => ({
     ...toPublicProfile(r, { viewer: me, connected: r.connectionStatus === 'accepted' }),
     connection: connectionState(me.id, r),
-  })));
+  });
+  res.json(keys
+    ? keysetResponse(rows, q, mapRow, cursor)
+    : paginated(rows, q, mapRow, cursor));
 }));
 
 // Values for the filter dropdowns (only from people who are visible in the directory).

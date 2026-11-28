@@ -110,7 +110,9 @@ All interactive targets are at least 44×44px.
 
 ## 7. Backend handover
 
-The frontend currently uses a mock data layer (`client/src/lib/store.tsx`) persisted to `localStorage`, seeded from `client/src/data/seed.ts`. Each store action maps 1:1 to a REST endpoint. The domain types in `client/src/types.ts` are the API contract. The rule-based AI in `client/src/lib/ai.ts` can move server-side, but must keep the same contract: reasons, uncertain wording and honest failure.
+Authentication has moved off the mock: `client/src/lib/api.ts` calls the live v2 auth endpoints, handles token refresh, adapts server DTOs to the client view model, and supports email verification, password reset and terms acceptance links. Tokens live in `localStorage`; no credentials or demo logins are baked into the client.
+
+Directory, messaging, opportunities and batch screens still read seeded demo data from `client/src/lib/store.tsx` so the UI remains reviewable. Each store action maps 1:1 to a REST endpoint and must be replaced with an `apiRequest()` call before production; the signed-in user always comes from the API. The domain types in `client/src/types.ts` describe the target contract. The rule-based AI in `client/src/lib/ai.ts` can move server-side, but must keep the same contract: reasons, uncertain wording and honest failure.
 
 Required backend concerns: HTTPS, authentication with verified roles, institutional email verification plus admin review, consent-based privacy enforcement, moderation, and rate limiting.
 

@@ -9,7 +9,7 @@ import { likeEscape } from '../../../utils/text.js';
 import { CONN_LATERAL, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE, profileVisibleTo } from '../../shared/sql.js';
 import { toPublicProfile } from '../../shared/serializers.js';
 import { isBlocked, isConnected } from '../../shared/relations.js';
-import { recordProfileView, recordSearchAppearances } from '../analytics/analytics.service.js';
+import { scheduleProfileView, scheduleSearchAppearances } from '../analytics/analytics.service.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
 
 const searchQuery = z.object({
@@ -75,7 +75,7 @@ discoveryRoutes.get('/search', authenticate, requireRole('student', 'alumni'), .
       ),
     ]);
 
-    await recordSearchAppearances(people.map((person) => person.id), req.user.id);
+    scheduleSearchAppearances(res, people.map((person) => person.id), req.user.id);
     res.json({
       data: {
         people: people.map((person) => ({
@@ -169,7 +169,7 @@ discoveryRoutes.get('/p/:handle', optionalAuthenticate, asyncHandler(async (req,
       [row.id],
     ),
   ]);
-  if (viewer) await recordProfileView(row.id, viewer.id);
+  scheduleProfileView(res, row.id, viewer?.id);
   res.json({ data: {
     profile: { ...toPublicProfile(row, { viewer, connected }), handle: row.handle },
     education, experience, projects, recommendations, endorsements,

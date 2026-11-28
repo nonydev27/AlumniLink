@@ -9,7 +9,7 @@ import { badRequest } from '../../../utils/errors.js';
  * message we hand to the provider, never in a queue payload or a table.
  */
 export function deriveActionToken(tokenId, purpose) {
-  return createHmac('sha256', config.jwtAccessSecret)
+  return createHmac('sha256', config.emailTokenSecret)
     .update(`email-action:${purpose}:${tokenId}`)
     .digest('base64url');
 }

@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate.js';
 import { badRequest, conflict, notFound } from '../../utils/errors.js';
 import { asyncHandler } from '../../utils/http.js';
 import { buildReportSnapshot } from '../shared/reportSnapshot.js';
+import { CONN_LATERAL, VISIBLE_PROFILE } from '../shared/sql.js';
 
 const schema = z.object({
   targetType: z.enum(['user', 'message', 'opportunity', 'group_post', 'ai_suggestion']),
@@ -16,7 +17,10 @@ const schema = z.object({
 
 // Reporters may only report things they can legitimately see (stops probing for hidden IDs).
 const VISIBLE_TO_REPORTER = {
-  user: "select 1 as ok from users where id = $1 and status = 'active' and role <> 'admin'",
+  // Reporting must not become an ID-probing channel for hidden profiles.
+  user: `select 1 as ok from users u
+           ${CONN_LATERAL('$2', 'u.id')}
+          where u.id = $1 and ${VISIBLE_PROFILE('u.id', '$2', 'conn')}`,
   message: `select 1 as ok from messages m join conversations c on c.id = m.conversation_id
              where m.id = $1 and (c.user_a = $2 or c.user_b = $2)`,
   opportunity: "select 1 as ok from opportunities where id = $1 and status in ('active', 'closed')",
@@ -30,7 +34,7 @@ reportsRoutes.use(authenticate, requireRole('student', 'alumni'));
 
 reportsRoutes.post('/', validate({ body: schema }), asyncHandler(async (req, res) => {
   const { targetType, targetId, reason, details } = req.valid.body;
-  const singleParam = ['user', 'opportunity'].includes(targetType);
+  const singleParam = targetType === 'opportunity';
   const params = singleParam ? [targetId] : [targetId, req.user.id];
   if (!(await db.one(VISIBLE_TO_REPORTER[targetType], params))) throw notFound('We could not find what you are trying to report.');
   if (targetType === 'user' && targetId === req.user.id) throw badRequest("You can't report yourself.");

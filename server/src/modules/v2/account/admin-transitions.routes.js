@@ -7,6 +7,7 @@ import { AppError, notFound } from '../../../utils/errors.js';
 import { asyncHandler, paginated } from '../../../utils/http.js';
 import { idParam, pagingShape } from '../../../utils/schemas.js';
 import { audit } from '../../shared/audit.js';
+import { ensureBatchGroup } from '../../groups/batchGroups.js';
 import { publishNotification } from '../notifications/notifications.service.js';
 
 export const adminTransitionRoutes = Router();
@@ -37,14 +38,17 @@ adminTransitionRoutes.patch('/:id', validate({ params: idParam, body: decisionSc
   const approved = decision === 'approve';
   const row = await tx(async (t) => {
     const request = await t.one(
-      `select r.*, u.role as current_role from alumni_transition_requests r
-       join users u on u.id = r.user_id
-       where r.id = $1 and r.status = $2 for update of r`,
+      `select r.*, u.role as current_role, u.status as current_status, u.deactivated_at
+         from alumni_transition_requests r
+         join users u on u.id = r.user_id
+        where r.id = $1 and r.status = $2 for update of r, u`,
       [req.valid.params.id, 'pending'],
     );
     if (!request) throw notFound('We could not find that transition request.');
-    if (!['student', 'alumni'].includes(request.currentRole)) {
-      throw new AppError(409, 'invalid_transition_target', 'That account cannot be reviewed here.');
+    if (!['student', 'alumni'].includes(request.currentRole)
+      || request.submittedRole !== request.currentRole
+      || request.currentStatus !== 'active' || request.deactivatedAt) {
+      throw new AppError(409, 'stale_transition_request', 'That account has changed since this request was submitted.');
     }
 
     const updated = await t.one(
@@ -69,6 +73,15 @@ adminTransitionRoutes.patch('/:id', validate({ params: idParam, body: decisionSc
         [request.userId, request.programme, request.graduationYear, String(request.graduationYear)],
       );
       await t.run("select set_config('app.identity_transition_user', '', true)");
+      // Keep batch groups keyed by the reviewed programme/year, not stale state.
+      await ensureBatchGroup(t, request.userId, request.programme, request.graduationYear);
+      await t.run(
+        `delete from group_members gm
+           using groups g
+          where gm.user_id = $1 and g.id = gm.group_id and g.kind = 'batch'
+            and (lower(g.programme) <> lower($2) or g.graduation_year <> $3)`,
+        [request.userId, request.programme, request.graduationYear],
+      );
     }
     await audit(t, req.user.id, `alumni_transition_${decision}`, 'user', request.userId, { note: note || null });
     await publishNotification(t, {

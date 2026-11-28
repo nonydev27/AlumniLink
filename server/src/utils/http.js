@@ -10,8 +10,24 @@ export const pageMeta = (page, limit, total) => ({
 
 export const offsetOf = ({ page, limit }) => (page - 1) * limit;
 
-/** Standard paginated response from rows that carry a `total` column (count(*) over()). */
-export function paginated(rows, q, mapRow) {
+import { signCursor } from './pagination.js';
+
+/**
+ * Standard paginated response from rows that carry a `total` column (count(*) over()).
+ * Callers that pass a cursor description also get a signed `nextCursor` so a
+ * client can move from offset paging to keyset paging without losing its place.
+ */
+export function paginated(rows, q, mapRow, cursor = null) {
   const total = rows[0]?.total ?? 0;
-  return { data: rows.map(mapRow), meta: pageMeta(q.page, q.limit, total) };
+  const meta = pageMeta(q.page, q.limit, total);
+  if (cursor) {
+    const last = rows.at(-1);
+    const hasMore = total > q.page * q.limit;
+    meta.mode = 'offset';
+    meta.hasMore = hasMore;
+    meta.nextCursor = hasMore && last
+      ? signCursor({ audience: cursor.audience, scope: cursor.scope, keys: cursor.keysOf(last) })
+      : null;
+  }
+  return { data: rows.map(mapRow), meta };
 }

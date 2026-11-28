@@ -5,7 +5,8 @@ import { authenticate, requireRole, requireVerified } from '../../middleware/aut
 import { validate } from '../../middleware/validate.js';
 import { AppError, notFound } from '../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
-import { idParam, pagingQuery } from '../../utils/schemas.js';
+import { keysetResponse, readCursor } from '../../utils/pagination.js';
+import { hybridPagingQuery, idParam } from '../../utils/schemas.js';
 import { loadProfileRow } from '../me/me.service.js';
 import { audit } from '../shared/audit.js';
 import { NOT_BLOCKED } from '../shared/sql.js';
@@ -55,6 +56,25 @@ async function loadGroup(groupId, userId) {
   return g;
 }
 
+// Batch groups are keyed by programme AND year; a year alone is ambiguous.
+groupsRoutes.get('/by-programme/:programme/:year', validate({
+  params: z.object({
+    programme: z.string().trim().min(2).max(120),
+    year: z.coerce.number().int().min(1960).max(2100),
+  }),
+}), asyncHandler(async (req, res) => {
+  const { programme, year } = req.valid.params;
+  const rows = await db.all(
+    `select ${GROUP_COLS},
+            exists (select 1 from group_members m where m.group_id = g.id and m.user_id = $3) as is_member
+       from groups g
+      where lower(g.programme) = lower($1) and g.graduation_year = $2
+      order by g.name limit 20`,
+    [programme, year, req.user.id],
+  );
+  res.json({ groups: rows });
+}));
+
 groupsRoutes.get('/:id', validate({ params: idParam }), asyncHandler(async (req, res) => {
   res.json({ group: await loadGroup(req.valid.params.id, req.user.id) });
 }));
@@ -77,20 +97,33 @@ async function requireMember(groupId, userId) {
   return g;
 }
 
-groupsRoutes.get('/:id/posts', validate({ params: idParam, query: pagingQuery }), asyncHandler(async (req, res) => {
+groupsRoutes.get('/:id/posts', validate({ params: idParam, query: hybridPagingQuery }), asyncHandler(async (req, res) => {
   const q = req.valid.query;
-  await requireMember(req.valid.params.id, req.user.id);
+  const groupId = req.valid.params.id;
+  await requireMember(groupId, req.user.id);
+  const scope = `group-posts:${groupId}`;
+  const cursor = {
+    audience: req.user.id,
+    scope,
+    keysOf: (r) => [r.createdAt.toISOString(), r.id],
+  };
+  const keys = q.cursor ? readCursor(q.cursor, cursor) : null;
+  const params = [groupId, q.limit + (keys ? 1 : 0), req.user.id];
+  if (keys) params.push(keys[0], keys[1]);
+  else params.push(offsetOf(q));
   const rows = await db.all(
     `select gp.id, gp.body, gp.created_at, u.id as author_id, u.first_name, u.last_name, u.role,
-            p.avatar_url, p.avatar_alt, count(*) over() as total
+            p.avatar_url, p.avatar_alt ${keys ? '' : ', count(*) over() as total'}
        from group_posts gp join users u on u.id = gp.author_id join profiles p on p.user_id = u.id
       where gp.group_id = $1 and gp.status = 'visible' and u.status = 'active'
         and u.deactivated_at is null
-        and ${NOT_BLOCKED('$4', 'u.id')}
-      order by gp.created_at desc limit $2 offset $3`,
-    [req.valid.params.id, q.limit, offsetOf(q), req.user.id],
+        and ${NOT_BLOCKED('$3', 'u.id')}
+        ${keys ? 'and (gp.created_at, gp.id) < ($4::timestamptz, $5::uuid)' : ''}
+      order by gp.created_at desc, gp.id desc
+      limit $2 ${keys ? '' : 'offset $4'}`,
+    params,
   );
-  res.json(paginated(rows, q, (r) => ({
+  const mapRow = (r) => ({
     id: r.id,
     body: r.body,
     createdAt: r.createdAt,
@@ -99,7 +132,10 @@ groupsRoutes.get('/:id/posts', validate({ params: idParam, query: pagingQuery })
       avatarUrl: r.avatarUrl ?? null,
       avatarAlt: r.avatarUrl ? (r.avatarAlt || `Profile photo of ${r.firstName} ${r.lastName}`) : null,
     },
-  })));
+  });
+  res.json(keys
+    ? keysetResponse(rows, q, mapRow, cursor)
+    : paginated(rows, q, mapRow, cursor));
 }));
 
 groupsRoutes.post('/:id/posts', validate({ params: idParam, body: postSchema }), asyncHandler(async (req, res) => {

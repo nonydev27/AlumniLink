@@ -32,9 +32,22 @@ aiRoutes.get('/suggestions/:id/explanation',
     res.json(await ai.explainSuggestion(req.user.id, req.valid.params.id, req.valid.query.level));
   }));
 
-// Accept or dismiss. Dismissed suggestions do not come back.
-aiRoutes.patch('/suggestions/:id', validate({ params: idParam, body: z.object({ action: z.enum(['accept', 'dismiss']) }) }), asyncHandler(async (req, res) => {
-  res.json({ suggestion: await ai.respondToSuggestion(req.user.id, req.valid.params.id, req.valid.body.action) });
+aiRoutes.get('/saved-opportunities', asyncHandler(async (req, res) => {
+  res.json({ data: await ai.listSavedOpportunities(req.user.id) });
+}));
+
+aiRoutes.delete('/saved-opportunities/:id', validate({ params: idParam }), asyncHandler(async (req, res) => {
+  res.json({ data: await ai.removeSavedOpportunity(req.user.id, req.valid.params.id) });
+}));
+
+// Accept or dismiss. "save" also bookmarks the opportunity and marks it answered.
+// Dismissed suggestions do not come back.
+aiRoutes.patch('/suggestions/:id', validate({ params: idParam, body: z.object({ action: z.enum(['accept', 'dismiss', 'save']) }) }), asyncHandler(async (req, res) => {
+  const { action } = req.valid.body;
+  const suggestion = action === 'save'
+    ? await ai.saveOpportunitySuggestion(req.user.id, req.valid.params.id)
+    : await ai.respondToSuggestion(req.user.id, req.valid.params.id, action);
+  res.json({ suggestion });
 }));
 
 // "Was this helpful?"

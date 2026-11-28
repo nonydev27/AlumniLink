@@ -22,10 +22,12 @@ export const NOTIFICATION_TYPES = Object.freeze([
 
 const isKnownType = (type) => NOTIFICATION_TYPES.includes(type);
 
-/** Call inside the same transaction as the business event. */
-export async function publishNotification(database, event, {
-  emailProvider = getEmailDeliveryProvider(),
-} = {}) {
+/**
+ * Call inside the same transaction as the business event.
+ * The API records email intent only; delivery capability belongs to the worker,
+ * so a missing adapter never changes what the request promises to the user.
+ */
+export async function publishNotification(database, event) {
   if (!isKnownType(event.type)) throw badRequest('That notification type is not supported.', undefined, 'invalid_notification_type');
   if (!event.dedupeKey || typeof event.dedupeKey !== 'string') {
     throw badRequest('A notification idempotency key is required.', undefined, 'notification_key_required');
@@ -51,9 +53,9 @@ export async function publishNotification(database, event, {
     );
   }
 
-  // An enabled preference is not a delivery capability. Do not queue email
-  // unless a real provider adapter is present and the event has a message.
-  if (emailEnabled && emailProvider && typeof emailProvider.send === 'function' && event.emailMessage) {
+  // Queue durable email work when the user opted in and the event has a
+  // message. The worker owns provider selection and records real delivery only.
+  if (emailEnabled && event.emailMessage) {
     const payload = {
       to: event.emailMessage.to,
       subject: event.emailMessage.subject,

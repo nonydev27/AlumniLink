@@ -96,6 +96,9 @@ try {
     await call('PATCH', '/me/profile', { token: a.accessToken, expect: 200, body: {
       headline: 'Data analyst', industry: 'Data Analytics', jobTitle: 'Data Analyst', currentCompany: 'Smoke Co',
       skills: ['Python', 'SQL'], interests: ['Machine Learning', `Topic ${run}`], willingToMentor: true } });
+    await authCall('PATCH', '/me/mentor-preferences', {
+      token: a.accessToken, body: { featuredMentorOptIn: true }, expect: 200,
+    });
   });
   await step('approved alumni identity fields are locked', async () => {
     await call('PATCH', '/me/profile', {
@@ -109,6 +112,9 @@ try {
   await step('student profile, then explainable mentor suggestion', async () => {
     await call('PATCH', '/me/profile', { token: s.accessToken, expect: 200, body: {
       skills: ['Python'], interests: ['Machine Learning', `Topic ${run}`], careerGoals: ['Data Science'] } });
+    await authCall('PATCH', '/me/mentor-preferences', {
+      token: s.accessToken, body: { seekingMentorship: true }, expect: 200,
+    });
     const r = await call('GET', '/ai/mentors', { token: s.accessToken, expect: 200 });
     suggestion = r.suggestions.find((x) => x.mentor.id === alumnusId);
     if (!suggestion) throw new Error('expected the new alumnus to be suggested');

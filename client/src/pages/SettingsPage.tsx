@@ -78,8 +78,8 @@ export default function SettingsPage() {
           <h2 className="text-lg font-bold text-slate-900">Account</h2>
           <p className="mt-1 text-sm text-slate-700">Signed in as <span className="font-semibold">{me.email}</span></p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button variant="secondary" size="lg" onClick={() => { logout(); navigate('/') }}><Icon name="logout" className="h-5 w-5" />Sign out</Button>
-            <Button variant="ghost" onClick={() => { resetDemo(); navigate('/') }}>Reset demo data</Button>
+            <Button variant="secondary" size="lg" onClick={() => { void logout().finally(() => navigate('/')) }}><Icon name="logout" className="h-5 w-5" />Sign out</Button>
+            <Button variant="ghost" onClick={() => { resetDemo(); navigate('/') }}>Reset local demo data</Button>
           </div>
           {/* Destructive action: small, separated from everything else, and confirmed. */}
           <div className="mt-8 border-t border-slate-200 pt-4">

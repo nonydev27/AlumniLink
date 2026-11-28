@@ -60,9 +60,9 @@ accountRoutes.post('/alumni-transition', validate({ body: transitionSchema }), a
   }
   try {
     const request = await db.one(
-      `insert into alumni_transition_requests (user_id, programme, graduation_year, evidence_url)
-       values ($1, $2, $3, $4) returning *`,
-      [req.user.id, body.programme, body.graduationYear, body.evidenceUrl || null],
+      `insert into alumni_transition_requests (user_id, programme, graduation_year, evidence_url, submitted_role)
+       values ($1, $2, $3, $4, $5) returning *`,
+      [req.user.id, body.programme, body.graduationYear, body.evidenceUrl || null, req.user.role],
     );
     res.status(201).json({ data: request });
   } catch (error) {
@@ -76,7 +76,8 @@ accountRoutes.get('/settings', asyncHandler(async (req, res) => {
     db.one(
       `select u.id, u.email, u.handle, u.role, u.verification_status, u.terms_accepted_version,
               u.email_verified_at, u.deactivated_at, u.mfa_enabled, u.public_profile_indexable,
-              u.privacy, p.headline, p.programme, p.graduation_year, p.avatar_url, p.avatar_alt,
+              u.featured_mentor_opt_in, u.privacy,
+              p.headline, p.programme, p.graduation_year, p.seeking_mentorship, p.avatar_url, p.avatar_alt,
               p.banner_url, p.banner_alt
        from users u join profiles p on p.user_id = u.id where u.id = $1`,
       [req.user.id],
@@ -95,9 +96,11 @@ accountRoutes.get('/settings', asyncHandler(async (req, res) => {
       verificationStatus: account.verificationStatus, termsAcceptedVersion: account.termsAcceptedVersion,
       emailVerifiedAt: account.emailVerifiedAt, deactivatedAt: account.deactivatedAt,
       mfaEnabled: account.mfaEnabled, publicProfileIndexable: account.publicProfileIndexable,
+      featuredMentorOptIn: account.featuredMentorOptIn,
     },
     profile: {
       headline: account.headline, programme: account.programme, graduationYear: account.graduationYear,
+      seekingMentorship: account.seekingMentorship,
       avatarUrl: account.avatarUrl, avatarAlt: account.avatarAlt,
       bannerUrl: account.bannerUrl, bannerAlt: account.bannerAlt,
     },
@@ -105,6 +108,36 @@ accountRoutes.get('/settings', asyncHandler(async (req, res) => {
     notificationPreferences: preferences,
     storage: { usedBytes: storage.usedBytes, assetCount: storage.assetCount, limitBytes: config.mediaStorageQuotaBytes },
   } });
+}));
+
+const mentorPreferenceSchema = z.object({
+  featuredMentorOptIn: z.boolean().optional(),
+  seekingMentorship: z.boolean().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, 'Choose at least one preference to update.');
+
+accountRoutes.patch('/mentor-preferences', validate({ body: mentorPreferenceSchema }), asyncHandler(async (req, res) => {
+  const { featuredMentorOptIn, seekingMentorship } = req.valid.body;
+  if (featuredMentorOptIn !== undefined && req.user.role !== 'alumni') {
+    throw badRequest('Only alumni can appear in the featured mentor list.');
+  }
+  if (seekingMentorship !== undefined && req.user.role !== 'student') {
+    throw badRequest('Only students can set a mentorship search preference.');
+  }
+  const row = await tx(async (t) => {
+    if (featuredMentorOptIn !== undefined) {
+      await t.run('update users set featured_mentor_opt_in = $2 where id = $1', [req.user.id, featuredMentorOptIn]);
+      await audit(t, req.user.id, 'featured_mentor_opt_in_changed', 'user', req.user.id, { enabled: featuredMentorOptIn });
+    }
+    if (seekingMentorship !== undefined) {
+      await t.run('update profiles set seeking_mentorship = $2 where user_id = $1', [req.user.id, seekingMentorship]);
+    }
+    return t.one(
+      `select u.featured_mentor_opt_in, p.seeking_mentorship
+         from users u join profiles p on p.user_id = u.id where u.id = $1`,
+      [req.user.id],
+    );
+  });
+  res.json({ data: row });
 }));
 
 accountRoutes.patch('/handle', validate({ body: handleSchema }), asyncHandler(async (req, res) => {

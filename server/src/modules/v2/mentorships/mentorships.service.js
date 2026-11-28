@@ -1,6 +1,7 @@
 import { db, tx } from '../../../db.js';
 import { conflict, notFound } from '../../../utils/errors.js';
 import { offsetOf, paginated } from '../../../utils/http.js';
+import { keysetResponse, readCursor } from '../../../utils/pagination.js';
 import { NOT_BLOCKED } from '../../shared/sql.js';
 import { publishNotification } from '../notifications/notifications.service.js';
 
@@ -28,27 +29,39 @@ const mentorshipDto = (row) => ({
   completedMentorshipCount: row.completedMentorshipCount,
 });
 
-export async function listMentorships(userId, query, { database = db } = {}) {
+export async function listMentorships(userId, query, {
+  database = db,
+  audience = userId,
+  scope = `mentorships:${query.role ?? 'all'}:${query.status ?? 'all'}`,
+} = {}) {
   const roleFilter = query.role === 'mentor' ? 'mentor'
     : query.role === 'mentee' ? 'mentee' : null;
+  const cursor = { audience, scope, keysOf: (row) => [row.updatedAt.toISOString(), row.id] };
+  const keys = query.cursor ? readCursor(query.cursor, cursor) : null;
+  const params = [userId, roleFilter, query.status || null, query.limit + (keys ? 1 : 0)];
+  if (keys) params.push(keys[0], keys[1]);
+  else params.push(offsetOf(query));
   const result = await database.all(
     `select m.id, m.connection_id, m.mentor_id, m.mentee_id, m.status,
             m.started_at, m.paused_at, m.completed_at, m.updated_at, m.completion_requested_by,
             (select count(distinct completed.mentee_id) from mentorships completed
               join users mentor on mentor.id = completed.mentor_id and mentor.role = 'alumni'
              where completed.mentor_id = m.mentor_id and completed.status = 'completed')
-              as completed_mentorship_count,
-            count(*) over() as total
+              as completed_mentorship_count
+            ${keys ? '' : ', count(*) over() as total'}
      from mentorships m
      where (m.mentor_id = $1 or m.mentee_id = $1)
        and ($2::text is null or ($2 = 'mentor' and m.mentor_id = $1)
             or ($2 = 'mentee' and m.mentee_id = $1))
        and ($3::text is null or m.status = $3)
-     order by m.updated_at desc, m.id
-     limit $4 offset $5`,
-    [userId, roleFilter, query.status || null, query.limit, offsetOf(query)],
+       ${keys ? 'and (m.updated_at, m.id) < ($5::timestamptz, $6::uuid)' : ''}
+     order by m.updated_at desc, m.id desc
+     limit $4 ${keys ? '' : 'offset $5'}`,
+    params,
   );
-  return paginated(result, query, mentorshipDto);
+  return keys
+    ? keysetResponse(result, query, mentorshipDto, cursor)
+    : paginated(result, query, mentorshipDto, cursor);
 }
 
 export async function updateMentorship(mentorshipId, actorId, nextStatus, {

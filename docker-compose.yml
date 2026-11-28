@@ -1,6 +1,20 @@
 # Local development stack.
 #   docker compose up -d db      -> PostgreSQL only (run the API with `npm run dev`)
-#   docker compose up --build    -> PostgreSQL + API (migrations run automatically)
+#   docker compose up --build    -> PostgreSQL + migrations + API + workers
+x-app-env: &app-env
+  NODE_ENV: development
+  DATABASE_URL: postgres://alumnilink:alumnilink@db:5432/alumnilink
+  JWT_ACCESS_SECRET: dev-only-secret-change-me-dev-only-secret-change-me
+  EMAIL_TOKEN_SECRET: dev-only-email-secret-change-me-dev-only-email-secret
+  ANALYTICS_HMAC_SECRET: dev-only-analytics-secret-change-me-analytics-secret
+  CURSOR_HMAC_SECRET: dev-only-cursor-secret-change-me-cursor-secret
+  CLIENT_ORIGINS: http://localhost:5173
+  CLIENT_URL: http://localhost:5173
+  CURRENT_TERMS_VERSION: 2026-11-01
+  CURRENT_TERMS_EFFECTIVE_AT: 2026-11-01T00:00:00Z
+  TERMS_URL: http://localhost:5173/terms
+  PRIVACY_URL: http://localhost:5173/privacy
+
 services:
   db:
     image: postgres:16-alpine
@@ -18,19 +32,51 @@ services:
       timeout: 3s
       retries: 10
 
-  api:
+  migrate:
     build: ./server
+    environment: *app-env
     depends_on:
       db:
         condition: service_healthy
+    command: ["node", "scripts/migrate.js"]
+    restart: "no"
+
+  api:
+    build: ./server
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # The API never needs a mail credential: it records intent, the worker sends.
     environment:
-      NODE_ENV: development
+      <<: *app-env
+      EMAIL_PROVIDER: none
       PORT: 4000
-      DATABASE_URL: postgres://alumnilink:alumnilink@db:5432/alumnilink
-      JWT_ACCESS_SECRET: dev-only-secret-change-me-dev-only-secret-change-me
-      CLIENT_ORIGINS: http://localhost:5173
     ports:
       - "4000:4000"
+
+  worker:
+    build: ./server
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-env
+      EMAIL_PROVIDER: console
+      NOTIFICATION_WORKER_ONCE: "false"
+    command: ["node", "scripts/notification-worker.js"]
+    restart: unless-stopped
+
+  analytics:
+    build: ./server
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-env
+      ANALYTICS_ROLLUP_ONCE: "false"
+      ANALYTICS_ROLLUP_INTERVAL_MS: "3600000"
+    command: ["node", "scripts/rollup-analytics.js"]
+    restart: unless-stopped
 
 volumes:
   alumnilink-pgdata:

@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { config } from '../../../config.js';
 import { db, tx } from '../../../db.js';
@@ -8,8 +8,8 @@ import { loadSelf } from '../../me/me.service.js';
 import { refresh as v1Refresh, logout as v1Logout } from '../../auth/auth.service.js';
 import { AppError, conflict, unauthorized } from '../../../utils/errors.js';
 import { accessTokenExpiry, newRefreshToken, hashToken, signAccessToken } from '../../../utils/tokens.js';
-import { getEmailDeliveryProvider } from './email-provider.js';
 import { createEmailAction, consumeEmailAction } from './email-actions.js';
+import { publishNotification } from '../notifications/notifications.service.js';
 
 const DUMMY_HASH = bcrypt.hashSync('alumnilink-dummy-password', config.bcryptRounds);
 const EMAIL_TAKEN = () => conflict(
@@ -62,7 +62,6 @@ function suggestedHandle(firstName, lastName) {
 export async function registerV2(input, {
   database = db,
   transaction = tx,
-  provider = getEmailDeliveryProvider(),
   meta = {},
   loadUser = loadSelf,
 } = {}) {
@@ -109,7 +108,9 @@ export async function registerV2(input, {
         verification: {
           required: true,
           expiresAt: verification.expiresAt,
-          delivery: provider?.send ? 'queued_for_delivery' : 'queued_no_provider',
+          // Durable intent, independent of the API's provider setting: the
+          // worker is the only component that can claim delivery capability.
+          delivery: 'queued',
         },
         message: 'Check your email to confirm your address. Your account is ready to use once you verify.',
       };
@@ -118,6 +119,38 @@ export async function registerV2(input, {
     if (error.code === '23505') throw EMAIL_TAKEN();
     throw error;
   }
+}
+
+/**
+ * Security notice for a genuinely new user agent, at most once per device per
+ * day. User agents are untrusted display text, never a device identifier.
+ */
+async function warnOnNewDevice(transaction, user, meta) {
+  const userAgent = String(meta.userAgent || 'unknown').slice(0, 255);
+  const seenBefore = await transaction.one(
+    'select 1 as ok from refresh_tokens where user_id = $1 and user_agent = $2 limit 1',
+    [user.id, userAgent],
+  );
+  const hasHistory = await transaction.one(
+    'select 1 as ok from refresh_tokens where user_id = $1 limit 1',
+    [user.id],
+  );
+  if (!hasHistory || seenBefore) return;
+  const fingerprint = createHash('sha256').update(userAgent).digest('hex').slice(0, 16);
+  const day = new Date().toISOString().slice(0, 10);
+  await publishNotification(transaction, {
+    userId: user.id,
+    type: 'new_device_sign_in',
+    title: 'New sign-in detected',
+    body: 'Your account was signed in from a device we have not seen before. If this was not you, reset your password.',
+    data: { userAgent, detectedOn: day },
+    dedupeKey: `new-device:${user.id}:${fingerprint}:${day}`,
+    emailMessage: {
+      to: user.email,
+      subject: 'New sign-in on your AlumniLink account',
+      text: 'We noticed a sign-in from a device we have not seen before. If this was not you, reset your password from the sign-in page.',
+    },
+  });
 }
 
 export async function loginV2({ email, password }, meta = {}, { transaction = tx } = {}) {
@@ -133,6 +166,7 @@ export async function loginV2({ email, password }, meta = {}, { transaction = tx
   }
   return transaction(async (t) => {
     await t.run('update users set last_login_at = now() where id = $1', [user.id]);
+    await warnOnNewDevice(t, user, meta);
     // A domain may have been approved after the address was verified, so
     // reconcile student identity on each successful sign-in as well.
     if (user.emailVerifiedAt) await finalizeStudentIdentity(t, user.id, user.email);

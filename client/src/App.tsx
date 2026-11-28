@@ -11,6 +11,10 @@ import { useStore } from './lib/store'
 // Signed-in pages are code-split so the landing page stays light on slow connections.
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const AcceptTermsPage = lazy(() => import('./pages/AcceptTermsPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const DirectoryPage = lazy(() => import('./pages/DirectoryPage'))
 const PersonPage = lazy(() => import('./pages/PersonPage'))
@@ -35,8 +39,10 @@ function Loading() {
 
 /** Logged-in users skip the login/register screens. */
 function GuestOnly({ children }: { children: ReactNode }) {
-  const { me } = useStore()
-  return me ? <Navigate to="/dashboard" replace /> : <>{children}</>
+  const { me, authLoading, gate } = useStore()
+  if (authLoading) return <Loading />
+  if (me && !gate.verificationRequired && !gate.termsAcceptanceRequired) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
 }
 
 export default function App() {
@@ -50,6 +56,10 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="login" element={<GuestOnly><LoginPage /></GuestOnly>} />
             <Route path="register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
+            <Route path="verify-email" element={<VerifyEmailPage />} />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
+            <Route path="accept-terms" element={<AcceptTermsPage />} />
           </Route>
 
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>
@@ -63,7 +73,7 @@ export default function App() {
             <Route path="messages/:conversationId" element={<MessagesPage />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
             <Route path="batches" element={<BatchesPage />} />
-            <Route path="batches/:year" element={<BatchGroupPage />} />
+            <Route path="batches/:year/:programme?" element={<BatchGroupPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="admin" element={<RequireAuth roles={['admin']}><AdminPage /></RequireAuth>} />
           </Route>

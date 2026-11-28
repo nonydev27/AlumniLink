@@ -10,6 +10,17 @@ export const pagingShape = {
 };
 export const pagingQuery = z.object(pagingShape);
 
+// High-traffic feeds accept a signed cursor; `page` stays as a deprecated
+// fallback so existing clients keep working during rollout.
+export const hybridPagingShape = {
+  ...pagingShape,
+  cursor: z.string().min(10).max(2048).optional(),
+};
+export const hybridPagingQuery = z.object(hybridPagingShape)
+  .refine((v) => !v.cursor || v.page === 1, {
+    path: ['cursor'], message: 'Use either cursor or page, not both.',
+  });
+
 /** Query-string booleans: z.coerce.boolean() would turn "false" into true, so be explicit. */
 export const boolQuery = z.enum(['true', 'false']).transform((v) => v === 'true');
 

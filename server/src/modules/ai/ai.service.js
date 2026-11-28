@@ -16,7 +16,8 @@ const levelOf = (user) => user.preferences?.explanationLevel || 'short';
 
 // ----------------------------------------------------------------- mentor matches
 // Candidates are pre-filtered in SQL for safety (verified, willing, visible, not blocked, not already
-// connected, not dismissed) and scored in JS. Capped at 300 - see README "Scaling" for the next step.
+// connected, not dismissed) and scored in JS. The cap keeps scoring bounded; see db/README.md
+// for the schema and index map.
 const MENTOR_CANDIDATES_SQL = `
   select ${USER_COLS}, ${PROFILE_COLS},
          (select count(*) from connections c where c.recipient_id = u.id and c.status = 'pending' and c.kind = 'mentorship') as pending_requests
@@ -48,6 +49,12 @@ export async function getMentorSuggestions(user, { limit }) {
     return {
       ...base, status: 'needs_more_details', suggestions: [], missing: missingForMatching(me),
       message: 'We need more details to suggest mentors. Add your interests or career goals to your profile.',
+    };
+  }
+  if (user.role === 'student' && me.seekingMentorship === false) {
+    return {
+      ...base, status: 'opt_in_required', suggestions: [],
+      message: 'Turn on “Looking for a mentor” in your settings to see mentor suggestions.',
     };
   }
 
@@ -167,6 +174,58 @@ export async function respondToSuggestion(userId, id, action) {
     throw conflict('You have already answered this suggestion.', 'already_answered');
   }
   throw notFound('We could not find that suggestion.');
+}
+
+/** "Save" is a durable bookmark, not a new AI status the admin schema must know about. */
+export async function saveOpportunitySuggestion(userId, id) {
+  return tx(async (t) => {
+    const suggestion = await t.one(
+      `select id, kind, subject_opportunity_id, status from ai_suggestions where id = $1 and user_id = $2`,
+      [id, userId],
+    );
+    if (!suggestion) throw notFound('We could not find that suggestion.');
+    if (suggestion.kind !== 'opportunity' || !suggestion.subjectOpportunityId) {
+      throw conflict('Only opportunity suggestions can be saved.', 'invalid_save_target');
+    }
+    await t.run(
+      `insert into saved_opportunities (user_id, opportunity_id) values ($1, $2)
+       on conflict (user_id, opportunity_id) do nothing`,
+      [userId, suggestion.subjectOpportunityId],
+    );
+    const existing = await t.one(
+      'select 1 as ok from saved_opportunities where user_id = $1 and opportunity_id = $2',
+      [userId, suggestion.subjectOpportunityId],
+    );
+    if (suggestion.status === 'shown') {
+      await t.run("update ai_suggestions set status = 'accepted', responded_at = now() where id = $1", [id]);
+    }
+    return { id, status: 'accepted', saved: Boolean(existing), opportunityId: suggestion.subjectOpportunityId };
+  });
+}
+
+export async function listSavedOpportunities(userId) {
+  const rows = await db.all(
+    `select o.id, o.type, o.title, o.description, o.company, o.location, o.industry,
+            o.is_remote, o.apply_url, o.event_date, o.deadline, o.tags, o.status, o.created_at,
+            o.posted_by, u.first_name as poster_first_name, u.last_name as poster_last_name,
+            s.saved_at
+       from saved_opportunities s
+       join opportunities o on o.id = s.opportunity_id
+       left join users u on u.id = o.posted_by
+      where s.user_id = $1 and o.status = 'active'
+      order by s.saved_at desc, o.id`,
+    [userId],
+  );
+  return rows.map(({ savedAt, ...row }) => ({ ...toOpportunity(row), savedAt }));
+}
+
+export async function removeSavedOpportunity(userId, opportunityId) {
+  const count = await db.run(
+    'delete from saved_opportunities where user_id = $1 and opportunity_id = $2',
+    [userId, opportunityId],
+  );
+  if (!count) throw notFound('That opportunity is not saved.');
+  return { removed: true };
 }
 
 export async function rateSuggestion(userId, id, { helpful, comment }) {
