@@ -386,7 +386,8 @@ export function profileStrength(row, sections = {}) {
 }
 
 const fullProfileRouter = Router();
-fullProfileRouter.get('/:id/full', authenticate, validate({ params: idParam }), asyncHandler(async (req, res) => {
+fullProfileRouter.get('/:id/full', authenticate, ...requireV2MemberPrerequisites,
+  validate({ params: idParam }), asyncHandler(async (req, res) => {
   const viewer = req.user;
   const row = await db.one(
     `select ${USER_COLS}, ${PROFILE_COLS}, u.status, u.deactivated_at, u.handle,

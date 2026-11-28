@@ -35,6 +35,19 @@ v2Router.get('/terms/current', asyncHandler(async (req, res) => {
 
 v2Router.use('/auth', v2AuthRoutes);
 
+// The reviewed institution catalog is public so sign-up can explain which email
+// domains will verify a student. Admin routes remain the only write surface.
+v2Router.get('/public/institutions', asyncHandler(async (req, res) => {
+  const rows = await db.all(
+    `select i.id, i.name, i.short_name, m.domain
+     from institutions i join institution_domain_mappings m on m.institution_id = i.id
+     where i.status = 'active' and m.status = 'active' and m.review_decision = 'approved'
+       and m.reviewed_by is not null and m.reviewed_by <> m.proposed_by
+     order by lower(i.name), m.domain`,
+  );
+  res.json({ data: rows });
+}));
+
 // Public discovery must be registered before any authenticated catch-all router,
 // otherwise its router-level guard answers 401/403 before these paths are seen.
 v2Router.use(discoveryRoutes);
