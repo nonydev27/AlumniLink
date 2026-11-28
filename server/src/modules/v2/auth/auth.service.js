@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { config } from '../../../config.js';
 import { db, tx } from '../../../db.js';
 import { ensureBatchGroup } from '../../groups/batchGroups.js';
+import { finalizeStudentIdentity } from '../../shared/institution.js';
 import { loadSelf } from '../../me/me.service.js';
 import { refresh as v1Refresh, logout as v1Logout } from '../../auth/auth.service.js';
 import { AppError, conflict, unauthorized } from '../../../utils/errors.js';
@@ -69,19 +70,20 @@ export async function registerV2(input, {
   if (await database.one('select 1 as ok from users where lower(email) = $1', [input.email])) throw EMAIL_TAKEN();
 
   const passwordHash = await bcrypt.hash(input.password, config.bcryptRounds);
-  const isAlumni = input.role === 'alumni';
 
   try {
     return await transaction(async (t) => {
       const handle = suggestedHandle(input.firstName, input.lastName);
+      // Nobody is network-verified at sign-up. Students are finalized only after
+      // email verification against an approved institution domain; alumni stay
+      // pending until Alumni Relations reviews them.
       const user = await t.one(
         `insert into users
            (email, password_hash, role, first_name, last_name, handle,
             verification_status, verified_at, terms_accepted_version, terms_accepted_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+         values ($1, $2, $3, $4, $5, $6, 'pending', null, $7, now())
          returning id, role, auth_epoch`,
-        [input.email, passwordHash, input.role, input.firstName, input.lastName, handle,
-          isAlumni ? 'pending' : 'verified', isAlumni ? null : new Date(), version],
+        [input.email, passwordHash, input.role, input.firstName, input.lastName, handle, version],
       );
       await t.run(
         'insert into profiles (user_id, programme, graduation_year, batch) values ($1, $2, $3, $4)',
@@ -120,7 +122,7 @@ export async function registerV2(input, {
 
 export async function loginV2({ email, password }, meta = {}, { transaction = tx } = {}) {
   const user = await db.one(
-    `select id, role, password_hash, status, email_verified_at, terms_accepted_version
+    `select id, email, role, password_hash, status, email_verified_at, terms_accepted_version
      from users where lower(email) = $1`,
     [email],
   );
@@ -131,6 +133,9 @@ export async function loginV2({ email, password }, meta = {}, { transaction = tx
   }
   return transaction(async (t) => {
     await t.run('update users set last_login_at = now() where id = $1', [user.id]);
+    // A domain may have been approved after the address was verified, so
+    // reconcile student identity on each successful sign-in as well.
+    if (user.emailVerifiedAt) await finalizeStudentIdentity(t, user.id, user.email);
     return {
       user: await loadSelf(user.id, t),
       tokens: await issueTokens(t, user, meta),
@@ -154,6 +159,7 @@ export async function verifyEmailV2(token, { transaction = tx } = {}) {
     const row = await consumeEmailAction(t, { purpose: 'verify_email', token });
     if (!row) throw badEmailToken();
     await t.run('update users set email_verified_at = now() where id = $1', [row.userId]);
+    await finalizeStudentIdentity(t, row.userId, row.emailAddress);
     return row;
   });
   return { verified: true, email: claimed.emailAddress };

@@ -13,6 +13,15 @@ const postSchema = z.object({ body: z.string().trim().min(1, 'Please write somet
 const GROUP_COLS = `g.id, g.name, g.programme, g.graduation_year,
   (select count(*) from group_members gm where gm.group_id = g.id) as member_count`;
 
+/** Batch groups are identity-scoped: a user may only join their own programme and year. */
+export function assertCanJoinBatchGroup(profile, group) {
+  const sameProgramme = String(profile?.programme || '').toLowerCase() === String(group?.programme || '').toLowerCase();
+  const sameYear = Number(profile?.graduationYear) === Number(group?.graduationYear);
+  if (!profile?.programme || !profile?.graduationYear || !sameProgramme || !sameYear) {
+    throw new AppError(403, 'batch_group_mismatch', 'You can only join the batch group for your own programme and graduation year.');
+  }
+}
+
 export const groupsRoutes = Router();
 groupsRoutes.use(authenticate, requireRole('student', 'alumni'), requireVerified);
 
@@ -27,7 +36,7 @@ groupsRoutes.get('/', asyncHandler(async (req, res) => {
   const discover = await db.all(
     `select ${GROUP_COLS} from groups g
       where not exists (select 1 from group_members m where m.group_id = g.id and m.user_id = $1)
-        and (lower(g.programme) = lower($2) or g.graduation_year = $3)
+        and lower(g.programme) = lower($2) and g.graduation_year = $3
       order by g.graduation_year desc limit 20`,
     [req.user.id, me.programme ?? '', me.graduationYear ?? 0],
   );
@@ -50,6 +59,7 @@ groupsRoutes.get('/:id', validate({ params: idParam }), asyncHandler(async (req,
 
 groupsRoutes.post('/:id/join', validate({ params: idParam }), asyncHandler(async (req, res) => {
   const g = await loadGroup(req.valid.params.id, req.user.id);
+  assertCanJoinBatchGroup(await loadProfileRow(req.user.id), g);
   await db.run('insert into group_members (group_id, user_id) values ($1, $2) on conflict do nothing', [g.id, req.user.id]);
   res.json({ group: { ...g, isMember: true } });
 }));

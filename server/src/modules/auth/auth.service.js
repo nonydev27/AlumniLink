@@ -47,19 +47,21 @@ async function issueTokens(d, user, meta = {}, { mfaAuthenticatedAt = null } = {
   };
 }
 
-export async function register(input, meta) {
-  if (await db.one('select 1 as ok from users where lower(email) = $1', [input.email])) throw EMAIL_TAKEN();
+export async function register(input, meta, { database = db, transaction = tx } = {}) {
+  if (await database.one('select 1 as ok from users where lower(email) = $1', [input.email])) throw EMAIL_TAKEN();
 
   const passwordHash = await bcrypt.hash(input.password, config.bcryptRounds);
-  const isAlumni = input.role === 'alumni';
 
   try {
-    return await tx(async (t) => {
+    return await transaction(async (t) => {
+      // No role is verified at sign-up: students need a verified institutional
+      // email, alumni need Alumni Relations review. This legacy service is kept
+      // for token helpers only; /api/v1/auth itself now returns 410.
       const user = await t.one(
         `insert into users (email, password_hash, role, first_name, last_name, verification_status, verified_at)
-         values ($1, $2, $3, $4, $5, $6, $7)
+         values ($1, $2, $3, $4, $5, 'pending', null)
          returning id, role, auth_epoch as auth_epoch`,
-        [input.email, passwordHash, input.role, input.firstName, input.lastName, isAlumni ? 'pending' : 'verified', isAlumni ? null : new Date()],
+        [input.email, passwordHash, input.role, input.firstName, input.lastName],
       );
       await t.run(
         'insert into profiles (user_id, programme, graduation_year, batch) values ($1, $2, $3, $4)',
@@ -70,9 +72,7 @@ export async function register(input, meta) {
       return {
         user: await loadSelf(user.id, t),
         tokens,
-        message: isAlumni
-          ? 'Welcome! An administrator will confirm your programme, graduation year and batch. You can complete your profile while you wait.'
-          : 'Welcome to AlumniLink!',
+        message: 'Your account is awaiting verification. Use /api/v2/auth to confirm your email and accept the current terms.',
       };
     });
   } catch (err) {

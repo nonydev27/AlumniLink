@@ -28,6 +28,21 @@ try {
     filename text primary key,
     applied_at timestamptz not null default now()
   )`);
+  // Older deployments used `name`; normalise it so this runner can resume.
+  await client.query(`
+    do $$
+    begin
+      if exists (
+        select 1 from information_schema.columns
+        where table_schema = current_schema() and table_name = 'schema_migrations' and column_name = 'name'
+      ) and not exists (
+        select 1 from information_schema.columns
+        where table_schema = current_schema() and table_name = 'schema_migrations' and column_name = 'filename'
+      ) then
+        alter table schema_migrations rename column name to filename;
+      end if;
+    end $$;
+  `);
   const done = new Set((await client.query('select filename from schema_migrations')).rows.map((r) => r.filename));
   const files = (await fs.readdir(dir)).filter((f) => f.endsWith('.sql')).sort();
   let applied = 0;

@@ -8,6 +8,7 @@ import { AppError, badRequest, conflict, notFound } from '../../../utils/errors.
 import { asyncHandler } from '../../../utils/http.js';
 import { httpUrl, idParam } from '../../../utils/schemas.js';
 import { verifyPassword } from '../../auth/auth.service.js';
+import { requireV2MemberPrerequisites } from '../middleware.js';
 import { audit } from '../../shared/audit.js';
 import { getMediaStorageProvider, SUPPORTED_IMAGE_TYPES } from './media-storage.js';
 
@@ -29,7 +30,7 @@ const privacySchema = z.object({
 const passwordConfirmSchema = z.object({ password: z.string().min(1) }).strict();
 
 export const accountRoutes = Router();
-accountRoutes.use(authenticate, memberRoles);
+accountRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 
 const transitionSchema = z.object({
   programme: z.string().trim().min(2).max(120),
@@ -46,10 +47,16 @@ accountRoutes.get('/alumni-transition', asyncHandler(async (req, res) => {
 }));
 
 accountRoutes.post('/alumni-transition', validate({ body: transitionSchema }), asyncHandler(async (req, res) => {
-  if (req.user.role !== 'student') throw badRequest('Only student accounts can request an alumni transition.');
+  const changingApprovedAlumni = req.user.role === 'alumni' && req.user.verificationStatus === 'verified';
+  if (!['student', 'alumni'].includes(req.user.role) || (req.user.role === 'alumni' && !changingApprovedAlumni)) {
+    throw badRequest('Only students moving to alumni, or verified alumni correcting approved details, can request a review.');
+  }
   const body = req.valid.body;
   if (body.graduationYear > new Date().getFullYear()) {
     throw badRequest('Choose a graduation year that has already passed.');
+  }
+  if (changingApprovedAlumni && !body.evidenceUrl) {
+    throw badRequest('Attach evidence so Alumni Relations can re-verify the change.', { evidenceUrl: 'Evidence is required.' });
   }
   try {
     const request = await db.one(
@@ -164,7 +171,7 @@ reactivateAccountRoutes.post('/reactivate', authenticateAllowDeactivated, member
   }));
 
 export const mediaStorageRoutes = new Router();
-mediaStorageRoutes.use(authenticate, memberRoles);
+mediaStorageRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 mediaStorageRoutes.get('/storage', asyncHandler(async (req, res) => {
   const result = await db.one(
     `select coalesce(sum(byte_size), 0)::bigint as used_bytes,
@@ -184,7 +191,7 @@ const uploadQuery = z.object({
 }).strict();
 
 export const mediaRoutes = new Router();
-mediaRoutes.use(authenticate, memberRoles);
+mediaRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 
 // express.json() ignores image/* bodies, so this raw parser can safely run at route level.
 mediaRoutes.post('/uploads',
@@ -260,7 +267,7 @@ mediaRoutes.delete('/:id', validate({ params: idParam, body: z.object({}).strict
   }));
 
 export const mfaSettingsRoutes = new Router();
-mfaSettingsRoutes.use(authenticate, memberRoles);
+mfaSettingsRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
 mfaSettingsRoutes.get('/mfa', asyncHandler(async (req, res) => {
   const state = await db.one(
     `select u.mfa_enabled,

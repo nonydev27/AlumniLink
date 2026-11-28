@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db, tx } from '../../../db.js';
 import { authenticate, requireRole } from '../../../middleware/auth.js';
 import { validate } from '../../../middleware/validate.js';
-import { badRequest, notFound } from '../../../utils/errors.js';
+import { AppError, notFound } from '../../../utils/errors.js';
 import { asyncHandler, paginated } from '../../../utils/http.js';
 import { idParam, pagingShape } from '../../../utils/schemas.js';
 import { audit } from '../../shared/audit.js';
@@ -17,7 +17,7 @@ const listQuery = z.object({ ...pagingShape, status: z.enum(['pending', 'approve
 adminTransitionRoutes.get('/', validate({ query: listQuery }), asyncHandler(async (req, res) => {
   const q = req.valid.query;
   const rows = await db.all(
-    `select r.*, u.email, u.first_name, u.last_name, count(*) over() as total
+    `select r.*, u.email, u.first_name, u.last_name, u.role as current_role, count(*) over() as total
      from alumni_transition_requests r join users u on u.id = r.user_id
      where r.status = $1 order by r.created_at asc limit $2 offset $3`,
     [q.status, q.limit, (q.page - 1) * q.limit],
@@ -37,10 +37,16 @@ adminTransitionRoutes.patch('/:id', validate({ params: idParam, body: decisionSc
   const approved = decision === 'approve';
   const row = await tx(async (t) => {
     const request = await t.one(
-      'select * from alumni_transition_requests where id = $1 and status = $2 for update',
+      `select r.*, u.role as current_role from alumni_transition_requests r
+       join users u on u.id = r.user_id
+       where r.id = $1 and r.status = $2 for update of r`,
       [req.valid.params.id, 'pending'],
     );
     if (!request) throw notFound('We could not find that transition request.');
+    if (!['student', 'alumni'].includes(request.currentRole)) {
+      throw new AppError(409, 'invalid_transition_target', 'That account cannot be reviewed here.');
+    }
+
     const updated = await t.one(
       `update alumni_transition_requests
        set status = $2, note = $3, decided_at = now(), decided_by = $4
@@ -48,9 +54,13 @@ adminTransitionRoutes.patch('/:id', validate({ params: idParam, body: decisionSc
       [request.id, approved ? 'approved' : 'rejected', note || null, req.user.id],
     );
     if (approved) {
+      // Verified alumni identity fields are DB-locked; this reviewed request is
+      // the only permitted path that may rewrite them.
+      await t.run("select set_config('app.identity_transition_user', $1, true)", [request.userId]);
       await t.run(
-        `update users set role = 'alumni', verification_status = 'pending', verified_at = null
-         where id = $1 and role = 'student'`,
+        `update users
+         set role = 'alumni', verification_status = 'pending', verified_at = null, verified_by = null
+         where id = $1`,
         [request.userId],
       );
       await t.run(
@@ -58,6 +68,7 @@ adminTransitionRoutes.patch('/:id', validate({ params: idParam, body: decisionSc
          where user_id = $1`,
         [request.userId, request.programme, request.graduationYear, String(request.graduationYear)],
       );
+      await t.run("select set_config('app.identity_transition_user', '', true)");
     }
     await audit(t, req.user.id, `alumni_transition_${decision}`, 'user', request.userId, { note: note || null });
     await publishNotification(t, {
@@ -65,13 +76,14 @@ adminTransitionRoutes.patch('/:id', validate({ params: idParam, body: decisionSc
       type: 'alumni_verification',
       title: approved ? 'Your alumni transition was approved' : 'Your alumni transition needs attention',
       body: approved
-        ? 'Your account is now an alumni account. An administrator will confirm your details next.'
+        ? request.currentRole === 'alumni'
+          ? 'Your updated programme and graduation details were accepted. Alumni Relations will confirm them next.'
+          : 'Your account is now an alumni account. An administrator will confirm your details next.'
         : `Your request was not approved. ${note || 'Please check your details and try again.'}`,
       data: { requestId: request.id, decision, note: note || null },
       dedupeKey: `alumni-transition:${request.id}:${decision}`,
     });
     return updated;
   });
-  if (!row) throw badRequest('That account is no longer a student account.');
   res.json({ data: row });
 }));

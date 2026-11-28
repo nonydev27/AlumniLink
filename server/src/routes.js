@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { authenticate } from './middleware/auth.js';
+import { requireV2MemberPrerequisites } from './modules/v2/middleware.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { aiRoutes } from './modules/ai/ai.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -15,7 +17,11 @@ import { usersRoutes } from './modules/users/users.routes.js';
 
 export const apiRouter = Router();
 
+// Auth is retired at the edge. Every remaining v1 surface requires v2 access
+// tokens that have already cleared current terms and verified-email checks.
 apiRouter.use('/auth', authRoutes);
+apiRouter.use(authenticate, ...requireV2MemberPrerequisites);
+
 apiRouter.use('/me', meRoutes);
 apiRouter.use('/users', usersRoutes);
 apiRouter.use('/directory', directoryRoutes);
