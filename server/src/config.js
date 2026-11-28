@@ -4,6 +4,7 @@ import { z } from 'zod';
 const bool = (def) => z.enum(['true', 'false']).default(def).transform((v) => v === 'true');
 
 const byteSize = z.coerce.number().int().min(1024).max(20 * 1024 * 1024);
+const storageQuota = z.coerce.number().int().min(1024).max(10 * 1024 * 1024 * 1024);
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -32,11 +33,14 @@ const schema = z.object({
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
   EMAIL_VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(5).max(60 * 24 * 14).default(1440),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(60 * 4).default(60),
+  // Zero means no message text ever leaves the API in an email or outbox payload.
+  EMAIL_MESSAGE_PREVIEW_MAX_CHARS: z.coerce.number().int().min(0).max(240).default(0),
   NOTIFICATION_WORKER_POLL_MS: z.coerce.number().int().min(0).max(60000).default(15000),
 
   STORAGE_PROVIDER: z.enum(['none', 'local']).default('none'),
   STORAGE_LOCAL_DIR: z.string().trim().min(1).default('./storage/uploads'),
   MEDIA_MAX_BYTES: byteSize.default(5 * 1024 * 1024),
+  MEDIA_STORAGE_QUOTA_BYTES: storageQuota.default(2 * 1024 * 1024 * 1024),
 }).superRefine((value, ctx) => {
   if (value.EMAIL_PROVIDER === 'http' && (!value.EMAIL_API_URL || !value.EMAIL_API_KEY)) {
     ctx.addIssue({
@@ -101,8 +105,10 @@ export const config = {
   clientUrl: env.CLIENT_URL,
   emailVerificationTtlMinutes: env.EMAIL_VERIFICATION_TTL_MINUTES,
   passwordResetTtlMinutes: env.PASSWORD_RESET_TTL_MINUTES,
+  emailMessagePreviewMaxChars: env.EMAIL_MESSAGE_PREVIEW_MAX_CHARS,
   notificationWorkerPollMs: env.NOTIFICATION_WORKER_POLL_MS,
   storageProvider: env.STORAGE_PROVIDER,
   storageLocalDir: env.STORAGE_LOCAL_DIR,
   mediaMaxBytes: env.MEDIA_MAX_BYTES,
+  mediaStorageQuotaBytes: env.MEDIA_STORAGE_QUOTA_BYTES,
 };

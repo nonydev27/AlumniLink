@@ -11,6 +11,7 @@ export const NOTIFICATION_TYPES = Object.freeze([
   'connection_cancelled',
   'mentorship_started',
   'mentorship_updated',
+  'mentorship_completion_request',
   'message',
   'alumni_verification',
   'email_verification',

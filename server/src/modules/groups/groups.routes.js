@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { db } from '../../db.js';
+import { db, tx } from '../../db.js';
 import { authenticate, requireRole, requireVerified } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { AppError, notFound } from '../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
 import { idParam, pagingQuery } from '../../utils/schemas.js';
 import { loadProfileRow } from '../me/me.service.js';
+import { audit } from '../shared/audit.js';
+import { NOT_BLOCKED } from '../shared/sql.js';
 
 const postSchema = z.object({ body: z.string().trim().min(1, 'Please write something first.').max(2000) });
 
@@ -83,8 +85,10 @@ groupsRoutes.get('/:id/posts', validate({ params: idParam, query: pagingQuery })
             p.avatar_url, p.avatar_alt, count(*) over() as total
        from group_posts gp join users u on u.id = gp.author_id join profiles p on p.user_id = u.id
       where gp.group_id = $1 and gp.status = 'visible' and u.status = 'active'
+        and u.deactivated_at is null
+        and ${NOT_BLOCKED('$4', 'u.id')}
       order by gp.created_at desc limit $2 offset $3`,
-    [req.valid.params.id, q.limit, offsetOf(q)],
+    [req.valid.params.id, q.limit, offsetOf(q), req.user.id],
   );
   res.json(paginated(rows, q, (r) => ({
     id: r.id,
@@ -105,4 +109,21 @@ groupsRoutes.post('/:id/posts', validate({ params: idParam, body: postSchema }),
     [req.valid.params.id, req.user.id, req.valid.body.body],
   );
   res.status(201).json({ post });
+}));
+
+// Authors can remove their own posts; keep the row for audit and report continuity.
+groupsRoutes.delete('/:id/posts/:postId', validate({ params: z.object({ id: idParam.shape.id, postId: idParam.shape.id }) }), asyncHandler(async (req, res) => {
+  const { id: groupId, postId } = req.valid.params;
+  await requireMember(groupId, req.user.id);
+  await tx(async (t) => {
+    const post = await t.one(
+      `update group_posts set status = 'deleted'
+        where id = $1 and group_id = $2 and author_id = $3 and status = 'visible'
+        returning id`,
+      [postId, groupId, req.user.id],
+    );
+    if (!post) throw notFound('We could not find that post.');
+    await audit(t, req.user.id, 'group_post.delete', 'group_post', postId, { groupId });
+  });
+  res.status(204).end();
 }));

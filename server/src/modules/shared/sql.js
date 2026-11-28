@@ -23,3 +23,50 @@ export const NOT_BLOCKED = (me, other) =>
   `not exists (select 1 from blocks b
                 where (b.blocker_id = ${me}::uuid and b.blocked_id = ${other}::uuid)
                    or (b.blocker_id = ${other}::uuid and b.blocked_id = ${me}::uuid))`;
+
+/**
+ * The single source of truth for person visibility. Use with users u / profiles p
+ * joined in the caller, and add CONN_LATERAL(viewer, other) when a viewer is given.
+ * Anonymous callers (viewer = null) never see network-only profiles.
+ */
+export const VISIBLE_PROFILE = (other = 'u.id', viewer = null, connAlias = 'conn', options = {}) => {
+  const {
+    admin = false,          // admin read paths bypass per-person privacy but not deactivation
+    requireConnection = false,
+    allowAdmin = false,     // include admin accounts in directories
+  } = options;
+  const parts = [
+    'u.status = \'active\'',
+    'u.deactivated_at is null',
+    'u.verification_status = \'verified\'',
+    allowAdmin ? "u.role in ('student', 'alumni', 'admin')" : "u.role in ('student', 'alumni')",
+    "coalesce((u.privacy->>'discoverable')::boolean, true)",
+  ];
+  if (viewer) {
+    parts.push(NOT_BLOCKED(viewer, other));
+    if (!admin) {
+      parts.push(`(
+        ${other} = ${viewer}::uuid
+        or coalesce((u.privacy->>'networkOnly')::boolean, false) = false
+        or ${connAlias}.status = 'accepted'
+      )`);
+    }
+    if (requireConnection) parts.push(`(${other} = ${viewer}::uuid or ${connAlias}.status = 'accepted')`);
+  } else {
+    parts.push("coalesce((u.privacy->>'networkOnly')::boolean, false) = false");
+  }
+  return parts.join('\n      and ');
+};
+
+/** Same policy as VISIBLE_PROFILE for rows already loaded in JS. */
+export const profileVisibleTo = (row, viewer, connected = false, options = {}) => {
+  if (!row) return false;
+  const { admin = false, allowAdmin = false } = options;
+  if (admin) return true;
+  if (viewer && row.id === viewer.id) return true;
+  if (row.status !== 'active' || row.deactivatedAt || row.verificationStatus !== 'verified') return false;
+  if (!['student', 'alumni', ...(allowAdmin ? ['admin'] : [])].includes(row.role)) return false;
+  if (row.privacy?.discoverable === false) return false;
+  if (row.privacy?.networkOnly && !connected) return false;
+  return true;
+};

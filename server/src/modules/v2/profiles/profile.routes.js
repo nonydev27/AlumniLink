@@ -7,7 +7,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../../utils/errors
 import { asyncHandler } from '../../../utils/http.js';
 import { httpUrl, idParam, pagingShape } from '../../../utils/schemas.js';
 import { isBlocked, isConnected } from '../../shared/relations.js';
-import { PROFILE_COLS, USER_COLS } from '../../shared/sql.js';
+import { PROFILE_COLS, USER_COLS, profileVisibleTo } from '../../shared/sql.js';
 import { toPublicProfile } from '../../shared/serializers.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
 import { recordProfileView } from '../analytics/analytics.service.js';
@@ -214,12 +214,16 @@ endorsementRouter.post('/:id/skills/:skill/endorse', validate({ params: endorsem
     throw notFound('You can endorse skills only for an accepted connection.');
   }
   const owner = await db.one(
-    `select u.id from users u
+    `select u.id, p.skills from users u join profiles p on p.user_id = u.id
      where u.id = $1 and u.status = 'active' and u.deactivated_at is null
-       and u.verification_status = 'verified'`,
+       and u.verification_status = 'verified' and u.role in ('student', 'alumni')
+       and coalesce((u.privacy->>'discoverable')::boolean, true)`,
     [ownerId],
   );
   if (!owner) throw notFound('We could not find that person.');
+  if (!(owner.skills || []).some((claimed) => claimed.trim().toLowerCase() === skill.trim().toLowerCase())) {
+    throw badRequest('You can endorse only skills listed on this profile.', { skill: 'Choose a skill from the profile.' });
+  }
   const endorsement = await db.one(
     `insert into skill_endorsements (owner_user_id, endorser_user_id, skill)
      values ($1, $2, $3)
@@ -246,11 +250,12 @@ endorsementRouter.get('/:id/endorsements', validate({ params: idParam, query: en
     }
   }
   const rows = await db.all(
-    `select skill, count(*)::int as endorsement_count, count(*) over() as total
-     from skill_endorsements
-     where owner_user_id = $1
-     group by skill_normalized, skill
-     order by endorsement_count desc, skill
+    `select e.skill, count(*)::int as endorsement_count, count(*) over() as total
+     from skill_endorsements e join profiles p on p.user_id = e.owner_user_id
+     where e.owner_user_id = $1
+       and exists (select 1 from unnest(p.skills) claimed where lower(btrim(claimed)) = e.skill_normalized)
+     group by e.skill_normalized, e.skill
+     order by endorsement_count desc, e.skill
      limit $2 offset $3`,
     [targetId, req.valid.query.limit, (req.valid.query.page - 1) * req.valid.query.limit],
   );
@@ -400,12 +405,8 @@ fullProfileRouter.get('/:id/full', authenticate, ...requireV2MemberPrerequisites
   const self = row.id === viewer.id;
   const connected = !self && await isConnected(db, viewer.id, row.id);
   if (!self && (await isBlocked(db, viewer.id, row.id))) throw notFound("We couldn't find this person.");
-  if (!self && viewer.role !== 'admin') {
-    const networkOnly = row.privacy?.networkOnly === true;
-    if (row.status !== 'active' || row.deactivatedAt || row.verificationStatus !== 'verified'
-      || row.privacy?.discoverable === false || (networkOnly && !connected)) {
-      throw notFound("We couldn't find this person.");
-    }
+  if (!profileVisibleTo(row, viewer, connected, { admin: viewer.role === 'admin' })) {
+    throw notFound("We couldn't find this person.");
   }
   const full = self || viewer.role === 'admin';
   const sections = await loadVisibleSections(row.id, { full, connected });
@@ -416,9 +417,11 @@ fullProfileRouter.get('/:id/full', authenticate, ...requireV2MemberPrerequisites
     [row.id, full, connected],
   );
   const endorsements = await db.all(
-    `select skill, count(*)::int as endorsement_count
-     from skill_endorsements where owner_user_id = $1
-     group by skill_normalized, skill order by endorsement_count desc, skill`,
+    `select e.skill, count(*)::int as endorsement_count
+     from skill_endorsements e join profiles p on p.user_id = e.owner_user_id
+     where e.owner_user_id = $1
+       and exists (select 1 from unnest(p.skills) claimed where lower(btrim(claimed)) = e.skill_normalized)
+     group by e.skill_normalized, e.skill order by endorsement_count desc, e.skill`,
     [row.id],
   );
   const recommendations = await db.all(

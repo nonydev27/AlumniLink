@@ -6,7 +6,7 @@ import { validate } from '../../../middleware/validate.js';
 import { notFound } from '../../../utils/errors.js';
 import { asyncHandler } from '../../../utils/http.js';
 import { likeEscape } from '../../../utils/text.js';
-import { CONN_LATERAL, NOT_BLOCKED, PROFILE_COLS, USER_COLS } from '../../shared/sql.js';
+import { CONN_LATERAL, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE, profileVisibleTo } from '../../shared/sql.js';
 import { toPublicProfile } from '../../shared/serializers.js';
 import { isBlocked, isConnected } from '../../shared/relations.js';
 import { recordProfileView, recordSearchAppearances } from '../analytics/analytics.service.js';
@@ -30,12 +30,8 @@ discoveryRoutes.get('/search', authenticate, requireRole('student', 'alumni'), .
        from users u
        join profiles p on p.user_id = u.id
        ${CONN_LATERAL('$1', 'u.id')}
-       where u.id <> $1 and u.status = 'active' and u.deactivated_at is null
-         and u.role in ('student', 'alumni') and u.verification_status = 'verified'
-         and coalesce((u.privacy->>'discoverable')::boolean, true)
-         and (coalesce((u.privacy->>'networkOnly')::boolean, false) = false
-              or conn.status = 'accepted')
-         and ${NOT_BLOCKED('$1', 'u.id')}
+       where u.id <> $1
+         and ${VISIBLE_PROFILE('u.id', '$1')}
          and (u.first_name ilike $2 or u.last_name ilike $2
               or (u.first_name || ' ' || u.last_name) ilike $2
               or p.headline ilike $2 or p.programme ilike $2
@@ -50,13 +46,12 @@ discoveryRoutes.get('/search', authenticate, requireRole('student', 'alumni'), .
       db.all(
         `select distinct lower(skill) as skill, count(*)::int as profiles
          from profiles p join users u on u.id = p.user_id
+         ${CONN_LATERAL('$1', 'u.id')}
          cross join lateral unnest(p.skills) as skill
-         where u.status = 'active' and u.deactivated_at is null
-           and u.verification_status = 'verified'
-           and coalesce((u.privacy->>'discoverable')::boolean, true)
-           and lower(skill) like lower($1)
-         group by lower(skill) order by lower(skill) limit $2`,
-        [pattern, limit],
+         where ${VISIBLE_PROFILE('u.id', '$1')}
+           and lower(skill) like lower($2)
+         group by lower(skill) order by lower(skill) limit $3`,
+        [req.user.id, pattern, limit],
       ),
       db.all(
         `select id, name, programme, graduation_year
@@ -70,11 +65,13 @@ discoveryRoutes.get('/search', authenticate, requireRole('student', 'alumni'), .
                 o.is_remote, o.apply_url, o.event_date, o.deadline, o.tags, o.created_at,
                 o.posted_by, u.first_name as poster_first_name, u.last_name as poster_last_name
          from opportunities o join users u on u.id = o.posted_by
-         where o.status = 'active' and u.status = 'active' and u.deactivated_at is null
-           and (o.title ilike $1 or o.description ilike $1 or o.company ilike $1
-                or o.industry ilike $1 or exists (select 1 from unnest(o.tags) as tag where tag ilike $1))
-         order by o.created_at desc limit $2`,
-        [pattern, limit],
+         ${CONN_LATERAL('$1', 'o.posted_by')}
+         where o.status = 'active'
+           and ${VISIBLE_PROFILE('o.posted_by', '$1')}
+           and (o.title ilike $2 or o.description ilike $2 or o.company ilike $2
+                or o.industry ilike $2 or exists (select 1 from unnest(o.tags) as tag where tag ilike $2))
+         order by o.created_at desc limit $3`,
+        [req.user.id, pattern, limit],
       ),
     ]);
 
@@ -108,10 +105,8 @@ discoveryRoutes.get('/public/featured-mentors', asyncHandler(async (req, res) =>
   const rows = await db.all(
     `select ${USER_COLS}, ${PROFILE_COLS}, u.handle
      from users u join profiles p on p.user_id = u.id
-     where u.role = 'alumni' and u.status = 'active' and u.deactivated_at is null
-       and u.verification_status = 'verified' and p.willing_to_mentor
-       and u.featured_mentor_opt_in
-       and coalesce((u.privacy->>'discoverable')::boolean, true)
+     where u.role = 'alumni' and p.willing_to_mentor and u.featured_mentor_opt_in
+       and ${VISIBLE_PROFILE('u.id', null)}
      order by u.last_name, u.first_name
      limit 24`,
   );
@@ -132,14 +127,14 @@ discoveryRoutes.get('/p/:handle', optionalAuthenticate, asyncHandler(async (req,
      where lower(u.handle) = $1`,
     [handle.data],
   );
-  if (!row || row.status !== 'active' || row.deactivatedAt
-    || row.verificationStatus !== 'verified' || !row.publicProfileIndexable
-    || row.privacy?.searchEngineIndexing !== true || row.privacy?.discoverable === false) {
-    throw notFound("We couldn't find this profile.");
-  }
+  if (!row) throw notFound("We couldn't find this profile.");
   const viewer = req.user;
   const self = viewer?.id === row.id;
   const connected = Boolean(viewer && !self && await isConnected(db, viewer.id, row.id));
+  if (!row.publicProfileIndexable || row.privacy?.searchEngineIndexing !== true
+    || !profileVisibleTo(row, viewer, connected)) {
+    throw notFound("We couldn't find this profile.");
+  }
   if (viewer && !self && await isBlocked(db, viewer.id, row.id)) throw notFound("We couldn't find this profile.");
   const [education, experience, projects, recommendations, endorsements] = await Promise.all([
     db.all(

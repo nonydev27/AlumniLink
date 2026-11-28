@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { db } from '../../db.js';
+import { db, tx } from '../../db.js';
 import { authenticate, requireRole, requireVerified } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { AppError, badRequest, forbidden, notFound } from '../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
 import { boolQuery, httpUrl, idParam, pagingShape } from '../../utils/schemas.js';
 import { likeEscape, uniqueClean } from '../../utils/text.js';
-import { NOT_BLOCKED } from '../shared/sql.js';
+import { audit } from '../shared/audit.js';
+import { CONN_LATERAL, NOT_BLOCKED, VISIBLE_PROFILE } from '../shared/sql.js';
 import { toOpportunity } from '../shared/serializers.js';
 
 const TYPES = ['job', 'internship', 'event', 'reunion', 'webinar'];
@@ -56,10 +57,10 @@ opportunitiesRoutes.get('/', validate({ query: listSchema }), asyncHandler(async
   const me = req.user;
   const params = [me.id];
   const add = (v) => { params.push(v); return `$${params.length}`; };
-  const where = ["u.status = 'active'", NOT_BLOCKED('$1', 'o.posted_by')];
+  const where = [NOT_BLOCKED('$1', 'o.posted_by')];
 
   if (q.mine) where.push('o.posted_by = $1'); // owners see every status of their own posts
-  else where.push("o.status = 'active'");
+  else where.push("o.status = 'active'", VISIBLE_PROFILE('o.posted_by', '$1'));
 
   if (!q.includePast && !q.mine) {
     where.push('(o.deadline is null or o.deadline >= now())', "(o.event_date is null or o.event_date >= now() - interval '1 day')");
@@ -83,6 +84,7 @@ opportunitiesRoutes.get('/', validate({ query: listSchema }), asyncHandler(async
   const rows = await db.all(
     `select ${COLS}, count(*) over() as total
        from opportunities o join users u on u.id = o.posted_by
+       ${CONN_LATERAL('$1', 'o.posted_by')}
       where ${where.join(' and ')} order by ${order} limit ${limitP} offset ${offsetP}`,
     params,
   );
@@ -92,7 +94,9 @@ opportunitiesRoutes.get('/', validate({ query: listSchema }), asyncHandler(async
 opportunitiesRoutes.get('/:id', validate({ params: idParam }), asyncHandler(async (req, res) => {
   const row = await db.one(
     `select ${COLS} from opportunities o join users u on u.id = o.posted_by
-      where o.id = $1 and ${NOT_BLOCKED('$2', 'o.posted_by')}`,
+       ${CONN_LATERAL('$2', 'o.posted_by')}
+      where o.id = $1
+        and (o.posted_by = $2 or ${VISIBLE_PROFILE('o.posted_by', '$2', 'conn', { admin: req.user.role === 'admin' })})`,
     [req.valid.params.id, req.user.id],
   );
   const canSee = row && (row.status === 'active' || row.postedBy === req.user.id || req.user.role === 'admin');
@@ -132,8 +136,8 @@ async function loadOwned(id, user) {
   const o = await db.one('select id, posted_by, status, type from opportunities where id = $1', [id]);
   if (!o) throw notFound('We could not find that opportunity.');
   if (o.postedBy !== user.id && user.role !== 'admin') throw forbidden('You can only change opportunities you posted.');
-  if (o.status === 'hidden' && user.role !== 'admin') {
-    throw forbidden('This post was hidden by a moderator. Please contact an administrator.');
+  if (['hidden', 'deleted'].includes(o.status) && user.role !== 'admin') {
+    throw forbidden('This post is no longer available. Please contact an administrator.');
   }
   return o;
 }
@@ -155,9 +159,17 @@ opportunitiesRoutes.patch('/:id', requireRole('alumni', 'admin'), validate({ par
   res.json({ opportunity: toOpportunity(row) });
 }));
 
-// "Deleting" closes the post so applicants and history aren't lost.
+// Author removal hides the post from feeds but keeps it for audit and reports.
 opportunitiesRoutes.delete('/:id', requireRole('alumni', 'admin'), validate({ params: idParam }), asyncHandler(async (req, res) => {
   const o = await loadOwned(req.valid.params.id, req.user);
-  await db.run("update opportunities set status = 'closed' where id = $1 and status = 'active'", [o.id]);
+  await tx(async (t) => {
+    const removed = await t.one(
+      `update opportunities set status = 'deleted'
+        where id = $1 and status in ('active', 'closed') returning id`,
+      [o.id],
+    );
+    if (!removed) throw notFound('We could not find that opportunity.');
+    await audit(t, req.user.id, 'opportunity.delete', 'opportunity', o.id);
+  });
   res.status(204).end();
 }));

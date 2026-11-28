@@ -23,6 +23,13 @@ export async function changeConnection({
       [connectionId, actorId],
     );
     if (!connection) throw notFound('We could not find that request.');
+    // A block invalidates the relationship even if a request was left pending by a race.
+    const blocked = await t.one(
+      `select 1 as ok from blocks
+        where (blocker_id = $1 and blocked_id = $2) or (blocker_id = $2 and blocked_id = $1) limit 1`,
+      [connection.requesterId, connection.recipientId],
+    );
+    if (blocked) throw notFound('We could not find that request.');
     if (connection.status !== 'pending') throw conflict('This request has already been answered.', 'already_answered');
     const isRequester = connection.requesterId === actorId;
     if (action === 'cancel' ? !isRequester : isRequester) {
@@ -35,7 +42,8 @@ export async function changeConnection({
     if (action === 'accept' && connection.kind === 'mentorship') {
       const mentor = await t.one(
         `select u.id from users u join profiles p on p.user_id = u.id
-         where u.id = $1 and u.status = 'active' and u.verification_status = 'verified'
+         where u.id = $1 and u.status = 'active' and u.deactivated_at is null
+           and u.verification_status = 'verified' and u.role = 'alumni'
            and p.willing_to_mentor = true`,
         [connection.recipientId],
       );

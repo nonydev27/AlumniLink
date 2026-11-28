@@ -10,7 +10,7 @@ import { httpUrl, idParam } from '../../../utils/schemas.js';
 import { verifyPassword } from '../../auth/auth.service.js';
 import { requireV2MemberPrerequisites } from '../middleware.js';
 import { audit } from '../../shared/audit.js';
-import { getMediaStorageProvider, SUPPORTED_IMAGE_TYPES } from './media-storage.js';
+import { detectImageContentType, getMediaStorageProvider, SUPPORTED_IMAGE_TYPES } from './media-storage.js';
 
 const memberRoles = requireRole('student', 'alumni');
 const empty = z.object({}).strict();
@@ -103,7 +103,7 @@ accountRoutes.get('/settings', asyncHandler(async (req, res) => {
     },
     privacy: account.privacy,
     notificationPreferences: preferences,
-    storage: { usedBytes: storage.usedBytes, assetCount: storage.assetCount, limitBytes: 2147483648 },
+    storage: { usedBytes: storage.usedBytes, assetCount: storage.assetCount, limitBytes: config.mediaStorageQuotaBytes },
   } });
 }));
 
@@ -179,7 +179,7 @@ mediaStorageRoutes.get('/storage', asyncHandler(async (req, res) => {
      from media_assets where owner_user_id = $1 and status = 'confirmed'`,
     [req.user.id],
   );
-  res.json({ data: { usedBytes: result.usedBytes, assetCount: result.assetCount, limitBytes: 2147483648 } });
+  res.json({ data: { usedBytes: result.usedBytes, assetCount: result.assetCount, limitBytes: config.mediaStorageQuotaBytes } });
 }));
 
 const unavailableMedia = () => {
@@ -206,13 +206,23 @@ mediaRoutes.post('/uploads',
       });
     }
     const { altText } = parsedQuery.data;
-    const contentType = req.headers['content-type']?.split(';')[0]?.trim().toLowerCase();
-    if (!SUPPORTED_IMAGE_TYPES.includes(contentType)) {
-      throw badRequest('Please upload a JPEG, PNG or WebP image.', { file: 'Use a JPEG, PNG or WebP image.' }, 'unsupported_image_type');
-    }
     const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
     if (!bytes.length || bytes.length > config.mediaMaxBytes) {
-      throw badRequest('Please choose an image under 5 MB.', { file: 'The image is too large.' }, 'image_too_large');
+      throw badRequest(`Please choose an image under ${Math.floor(config.mediaMaxBytes / (1024 * 1024))} MB.`, { file: 'The image is too large.' }, 'image_too_large');
+    }
+    // The declared Content-Type only selects the parser; the stored type comes
+    // from the bytes themselves so a script cannot masquerade as an image.
+    const contentType = detectImageContentType(bytes);
+    if (!contentType || !SUPPORTED_IMAGE_TYPES.includes(contentType)) {
+      throw badRequest('Please upload a JPEG, PNG or WebP image.', { file: 'Use a JPEG, PNG or WebP image.' }, 'unsupported_image_type');
+    }
+    const usage = await db.one(
+      `select coalesce(sum(byte_size), 0)::bigint as used_bytes
+       from media_assets where owner_user_id = $1 and status in ('confirmed', 'pending')`,
+      [req.user.id],
+    );
+    if (usage.usedBytes + bytes.length > config.mediaStorageQuotaBytes) {
+      throw new AppError(413, 'storage_quota_exceeded', 'Your media storage quota is full. Remove an image and try again.');
     }
     const objectKey = await provider.put(contentType, bytes);
     try {
@@ -265,6 +275,47 @@ mediaRoutes.delete('/:id', validate({ params: idParam, body: z.object({}).strict
     await provider.remove(asset.objectKey);
     res.status(204).end();
   }));
+
+const profileMediaSchema = z.object({
+  avatarAssetId: z.string().uuid().nullable().optional(),
+  bannerAssetId: z.string().uuid().nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length > 0, 'Choose an image to update.');
+
+// Attach a confirmed upload to the profile. Only owned assets are accepted, and
+// the alt text travels with the asset so screen-reader text cannot drift.
+mediaRoutes.patch('/profile-media', validate({ body: profileMediaSchema }), asyncHandler(async (req, res) => {
+  const body = req.valid.body;
+  const profile = await tx(async (t) => {
+    const sets = [];
+    const params = [req.user.id];
+    for (const [field, urlColumn, altColumn] of [
+      ['avatarAssetId', 'avatar_url', 'avatar_alt'],
+      ['bannerAssetId', 'banner_url', 'banner_alt'],
+    ]) {
+      if (!(field in body)) continue;
+      let url = null;
+      let alt = null;
+      if (body[field]) {
+        const asset = await t.one(
+          `select id, alt_text from media_assets
+           where id = $1 and owner_user_id = $2 and status = 'confirmed'`,
+          [body[field], req.user.id],
+        );
+        if (!asset) throw notFound('We could not find that upload.');
+        url = `/api/v2/media/${asset.id}/file`;
+        alt = asset.altText;
+      }
+      params.push(url, alt);
+      sets.push(`${urlColumn} = $${params.length - 1}, ${altColumn} = $${params.length}`);
+    }
+    return t.one(
+      `update profiles set ${sets.join(', ')}, updated_at = now()
+       where user_id = $1 returning avatar_url, avatar_alt, banner_url, banner_alt`,
+      params,
+    );
+  });
+  res.json({ data: profile });
+}));
 
 export const mfaSettingsRoutes = new Router();
 mfaSettingsRoutes.use(authenticate, memberRoles, ...requireV2MemberPrerequisites);
