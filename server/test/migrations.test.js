@@ -52,6 +52,7 @@ test('versioned schema upgrades v1 rows safely and enforces v2 data invariants',
       '007_public_profile_details.sql',
       '008_alumni_transition_requests.sql',
       '009_lock_verified_alumni_identity.sql',
+      '010_moderation_and_mentorship.sql',
     ]);
     for (const filename of migrationFiles) {
       await client.query(await fs.readFile(path.join(migrationDir, filename), 'utf8'));
@@ -103,6 +104,30 @@ test('versioned schema upgrades v1 rows safely and enforces v2 data invariants',
     )).rows[0];
     assert.equal(reviewedIdentity.programme, 'Reviewed Studies');
     assert.equal(reviewedIdentity.graduation_year, 2019);
+
+    const tier2Columns = await client.query(
+      `select table_name, column_name from information_schema.columns
+        where table_schema = $1 and (
+          (table_name = 'reports' and column_name in ('content_snapshot', 'target_author_id'))
+          or (table_name = 'mentorships' and column_name = 'completion_requested_by'))`,
+      [schema],
+    );
+    assert.deepEqual(tier2Columns.rows.map((r) => `${r.table_name}.${r.column_name}`).sort(), [
+      'mentorships.completion_requested_by', 'reports.content_snapshot', 'reports.target_author_id',
+    ]);
+    const deletedStatuses = await client.query(
+      `select t.table_name, c.constraint_name
+         from information_schema.check_constraints c
+         join information_schema.constraint_column_usage t on t.constraint_name = c.constraint_name
+        where c.constraint_schema = $1 and c.check_clause like '%deleted%'`,
+      [schema],
+    );
+    assert.ok(deletedStatuses.rows.length >= 3, 'author-delete status must be allowed on messages, posts and opportunities');
+    await client.query("insert into audit_log (action, entity, meta) values ('probe', 'report', '{}')");
+    await expectSqlCode(
+      client.query("update audit_log set action = 'tampered' where action = 'probe'"),
+      'P0001',
+    );
 
     const gateRows = (await client.query(
       'select gate_name, enabled from security_feature_gates order by gate_name',

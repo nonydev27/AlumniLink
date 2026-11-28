@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { config } from '../../config.js';
 import { db, tx } from '../../db.js';
 import { authenticate, requireRole, requireVerified } from '../../middleware/auth.js';
 import { messageLimiter } from '../../middleware/rateLimit.js';
@@ -7,8 +8,9 @@ import { validate } from '../../middleware/validate.js';
 import { AppError, badRequest, notFound } from '../../utils/errors.js';
 import { asyncHandler } from '../../utils/http.js';
 import { idParam } from '../../utils/schemas.js';
+import { audit } from '../shared/audit.js';
 import { isBlocked, isConnected } from '../shared/relations.js';
-import { PROFILE_COLS, USER_COLS } from '../shared/sql.js';
+import { NOT_BLOCKED, PROFILE_COLS, USER_COLS } from '../shared/sql.js';
 import { toPublicProfile } from '../shared/serializers.js';
 import { publishNotification } from '../v2/notifications/notifications.service.js';
 
@@ -21,6 +23,10 @@ const listSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 
+/** Opt-in only: zero (the default) never puts DM text into an email payload. */
+export const dmEmailText = (firstName, body, maxChars = config.emailMessagePreviewMaxChars) =>
+  `${firstName} sent you a message. Sign in to read it.${maxChars > 0 ? ` Preview: ${body.slice(0, maxChars)}` : ''}`;
+
 export const messagesRoutes = Router();
 messagesRoutes.use(authenticate, requireRole('student', 'alumni'), requireVerified);
 
@@ -30,8 +36,12 @@ messagesRoutes.post('/messages', messageLimiter, validate({ body: sendSchema }),
   const { recipientId, body } = req.valid.body;
   if (recipientId === me.id) throw badRequest("You can't message yourself.");
 
-  const recipient = await db.one('select id, email, first_name, status from users where id = $1', [recipientId]);
-  if (!recipient || recipient.status !== 'active' || (await isBlocked(db, me.id, recipientId))) {
+  const recipient = await db.one(
+    `select id, email, first_name, status, deactivated_at, verification_status from users where id = $1`,
+    [recipientId],
+  );
+  if (!recipient || recipient.status !== 'active' || recipient.deactivatedAt
+    || recipient.verificationStatus !== 'verified' || (await isBlocked(db, me.id, recipientId))) {
     throw notFound("We couldn't find this person.");
   }
   if (!(await isConnected(db, me.id, recipientId))) {
@@ -60,7 +70,9 @@ messagesRoutes.post('/messages', messageLimiter, validate({ body: sendSchema }),
       emailMessage: {
         to: recipient.email,
         subject: `New AlumniLink message from ${me.firstName}`,
-        text: `${me.firstName} sent you a message: ${body.slice(0, 240)}`,
+        // Message text is private by default. Nothing in the body is persisted
+        // in notification_outbox or sent by email unless the operator opts in.
+        text: dmEmailText(me.firstName, body),
       },
     });
     return row;
@@ -84,6 +96,8 @@ messagesRoutes.get('/conversations', asyncHandler(async (req, res) => {
           where m.conversation_id = c.id and m.status = 'visible' order by m.created_at desc limit 1
        ) lm on true
       where (c.user_a = $1 or c.user_b = $1) and u.status = 'active'
+        and u.deactivated_at is null and u.verification_status = 'verified'
+        and ${NOT_BLOCKED('$1', 'u.id')}
       order by c.last_message_at desc
       limit 100`,
     [me.id],
@@ -100,8 +114,20 @@ messagesRoutes.get('/conversations', asyncHandler(async (req, res) => {
 }));
 
 async function assertParticipant(conversationId, userId) {
-  const c = await db.one('select id from conversations where id = $1 and (user_a = $2 or user_b = $2)', [conversationId, userId]);
+  const c = await db.one(
+    `select c.id, case when c.user_a = $2 then c.user_b else c.user_a end as other_id
+       from conversations c
+      where c.id = $1 and (c.user_a = $2 or c.user_b = $2)`,
+    [conversationId, userId],
+  );
   if (!c) throw notFound('We could not find that conversation.');
+  const other = await db.one(
+    `select 1 as ok from users u
+      where u.id = $1 and u.status = 'active' and u.deactivated_at is null
+        and u.verification_status = 'verified' and ${NOT_BLOCKED('$2', 'u.id')}`,
+    [c.otherId, userId],
+  );
+  if (!other) throw notFound('We could not find that conversation.');
 }
 
 // Newest page first from the server's point of view; returned oldest-to-newest so it can be rendered directly.
@@ -130,4 +156,23 @@ messagesRoutes.post('/conversations/:id/read', validate({ params: idParam }), as
     [id, req.user.id],
   );
   res.json({ marked });
+}));
+
+// Authors can retract their own messages. The row remains for moderation history.
+messagesRoutes.delete('/messages/:id', validate({ params: idParam }), asyncHandler(async (req, res) => {
+  const messageId = req.valid.params.id;
+  const message = await db.one('select id, conversation_id from messages where id = $1', [messageId]);
+  if (!message) throw notFound('We could not find that message.');
+  await assertParticipant(message.conversationId, req.user.id);
+  const removed = await tx(async (t) => {
+    const row = await t.one(
+      `update messages set status = 'deleted'
+        where id = $1 and sender_id = $2 and status = 'visible' returning id`,
+      [messageId, req.user.id],
+    );
+    if (!row) throw notFound('We could not find that message.');
+    await audit(t, req.user.id, 'message.delete', 'message', messageId, { conversationId: message.conversationId });
+    return row;
+  });
+  res.json({ message: removed });
 }));

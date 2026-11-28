@@ -6,7 +6,7 @@ import { validate } from '../../middleware/validate.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
 import { boolQuery, pagingShape } from '../../utils/schemas.js';
 import { likeEscape } from '../../utils/text.js';
-import { CONN_LATERAL, NOT_BLOCKED, PROFILE_COLS, USER_COLS } from '../shared/sql.js';
+import { CONN_LATERAL, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE } from '../shared/sql.js';
 import { connectionState, toPublicProfile } from '../shared/serializers.js';
 import { recordSearchAppearances } from '../v2/analytics/analytics.service.js';
 
@@ -40,12 +40,8 @@ directoryRoutes.get('/', validate({ query: searchSchema }), asyncHandler(async (
   const add = (v) => { params.push(v); return `$${params.length}`; };
   const where = [
     'u.id <> $1',
-    "u.status = 'active'",
-    'u.deactivated_at is null',
-    "u.verification_status = 'verified'",
+    VISIBLE_PROFILE('u.id', '$1'),
     'u.role = any($2::text[])',
-    "coalesce((u.privacy->>'discoverable')::boolean, true)",
-    NOT_BLOCKED('$1', 'u.id'),
   ];
   const showsEmployer = "coalesce((u.privacy->>'showEmployer')::boolean, true)";
   const showsLocation = "coalesce((u.privacy->>'showLocation')::boolean, true)";
@@ -96,9 +92,7 @@ directoryRoutes.get('/', validate({ query: searchSchema }), asyncHandler(async (
 // Values for the filter dropdowns (only from people who are visible in the directory).
 directoryRoutes.get('/filters', asyncHandler(async (req, res) => {
   const base = `from profiles p join users u on u.id = p.user_id
-     where u.status = 'active' and u.verification_status = 'verified' and u.role in ('student', 'alumni')
-      and u.deactivated_at is null
-       and coalesce((u.privacy->>'discoverable')::boolean, true)`;
+     where ${VISIBLE_PROFILE('u.id', null)}`;
   const [programmes, industries, years, locations] = await Promise.all([
     db.all(`select distinct p.programme as v ${base} and p.programme is not null order by 1 limit 200`),
     db.all(`select distinct p.industry as v ${base} and p.industry is not null order by 1 limit 200`),

@@ -2,7 +2,8 @@ import { db, tx } from '../../db.js';
 import { AppError, conflict, notFound } from '../../utils/errors.js';
 import { loadProfileRow } from '../me/me.service.js';
 import { toOpportunity, toPublicProfile } from '../shared/serializers.js';
-import { NOT_BLOCKED, PAIR_MATCH, PROFILE_COLS, USER_COLS } from '../shared/sql.js';
+import { CONN_LATERAL, PAIR_MATCH, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE } from '../shared/sql.js';
+import { buildReportSnapshot } from '../shared/reportSnapshot.js';
 import { coachMessage } from './coach.js';
 import { AI_LABEL, AI_NOTE, DATA_USED_OPPORTUNITIES, FIT, explain } from './explain.js';
 import { suggestFollowUps } from './followups.js';
@@ -20,11 +21,11 @@ const MENTOR_CANDIDATES_SQL = `
   select ${USER_COLS}, ${PROFILE_COLS},
          (select count(*) from connections c where c.recipient_id = u.id and c.status = 'pending' and c.kind = 'mentorship') as pending_requests
     from users u join profiles p on p.user_id = u.id
-   where u.role = 'alumni' and u.status = 'active' and u.verification_status = 'verified'
+    ${CONN_LATERAL('$1', 'u.id')}
+   where ${VISIBLE_PROFILE('u.id', '$1')}
+     and u.role = 'alumni'
      and p.willing_to_mentor
-     and coalesce((u.privacy->>'discoverable')::boolean, true)
      and u.id <> $1
-     and ${NOT_BLOCKED('$1', 'u.id')}
      and not exists (select 1 from connections c where ${PAIR_MATCH('$1', 'u.id')} and c.status in ('pending', 'accepted'))
      and not exists (select 1 from ai_suggestions s
                       where s.user_id = $1 and s.kind = 'mentor_match' and s.subject_user_id = u.id
@@ -93,10 +94,11 @@ const OPPORTUNITY_CANDIDATES_SQL = `
          o.event_date, o.deadline, o.tags, o.status, o.created_at, o.posted_by,
          u.first_name as poster_first_name, u.last_name as poster_last_name, pp.programme as poster_programme
     from opportunities o join users u on u.id = o.posted_by join profiles pp on pp.user_id = u.id
-   where o.status = 'active' and u.status = 'active' and o.posted_by <> $1
+    ${CONN_LATERAL('$1', 'o.posted_by')}
+   where o.status = 'active' and o.posted_by <> $1
+     and ${VISIBLE_PROFILE('o.posted_by', '$1')}
      and (o.deadline is null or o.deadline >= now())
      and (o.event_date is null or o.event_date >= now())
-     and ${NOT_BLOCKED('$1', 'o.posted_by')}
      and not exists (select 1 from ai_suggestions s
                       where s.user_id = $1 and s.kind = 'opportunity' and s.subject_opportunity_id = o.id and s.status = 'dismissed')
    order by o.created_at desc
@@ -179,16 +181,32 @@ export async function rateSuggestion(userId, id, { helpful, comment }) {
 export async function reportSuggestion(userId, id, { reason, details }) {
   const s = await db.one('select id from ai_suggestions where id = $1 and user_id = $2', [id, userId]);
   if (!s) throw notFound('We could not find that suggestion.');
+  const { snapshot, authorId } = await buildReportSnapshot(db, 'ai_suggestion', id);
   return db.one(
-    `insert into reports (reporter_id, target_type, target_id, reason, details)
-     values ($1, 'ai_suggestion', $2, $3, $4) returning id, status, created_at`,
-    [userId, id, reason, details || null],
+    `insert into reports (reporter_id, target_type, target_id, reason, details, content_snapshot, target_author_id)
+     values ($1, 'ai_suggestion', $2, $3, $4, $5::jsonb, $6) returning id, status, created_at`,
+    [userId, id, reason, details || null, JSON.stringify(snapshot), authorId],
   );
+}
+
+async function assertSuggestionTargetVisible(userId, suggestion) {
+  if (suggestion.kind === 'mentor_match' && suggestion.subjectUserId) {
+    await loadVisiblePerson({ id: userId }, suggestion.subjectUserId);
+  } else if (suggestion.kind === 'opportunity' && suggestion.subjectOpportunityId) {
+    const opportunity = await db.one(
+      `select o.id from opportunities o join users u on u.id = o.posted_by
+       ${CONN_LATERAL('$2', 'o.posted_by')}
+       where o.id = $1 and o.status = 'active' and ${VISIBLE_PROFILE('o.posted_by', '$2')}`,
+      [suggestion.subjectOpportunityId, userId],
+    );
+    if (!opportunity) throw notFound('We could not find that suggestion.');
+  }
 }
 
 export async function explainSuggestion(userId, id, level) {
   const s = await db.one(
-    `select s.id, s.kind, s.reasons, u.first_name, u.last_name, o.title
+    `select s.id, s.kind, s.reasons, s.subject_user_id, s.subject_opportunity_id,
+            u.first_name, u.last_name, o.title
        from ai_suggestions s
        left join users u on u.id = s.subject_user_id
        left join opportunities o on o.id = s.subject_opportunity_id
@@ -196,6 +214,9 @@ export async function explainSuggestion(userId, id, level) {
     [id, userId],
   );
   if (!s) throw notFound('We could not find that suggestion.');
+  // A subject may have blocked the viewer, deactivated, or hidden themselves since the
+  // suggestion was generated; never disclose their details from a stale row.
+  await assertSuggestionTargetVisible(userId, s);
   const mentor = s.kind === 'mentor_match';
   return {
     id: s.id,
@@ -217,9 +238,10 @@ export async function getProfileFeedback(user) {
 
 async function loadVisiblePerson(viewer, otherId) {
   const row = await db.one(
-    `select ${USER_COLS}, ${PROFILE_COLS} from users u join profiles p on p.user_id = u.id
-      where u.id = $1 and u.status = 'active' and u.verification_status = 'verified' and u.role <> 'admin'
-        and ${NOT_BLOCKED('$2', 'u.id')}`,
+    `select ${USER_COLS}, ${PROFILE_COLS}, conn.status as connection_status
+       from users u join profiles p on p.user_id = u.id
+       ${CONN_LATERAL('$2', 'u.id')}
+      where u.id = $1 and ${VISIBLE_PROFILE('u.id', '$2')}`,
     [otherId, viewer.id],
   );
   if (!row) throw notFound("We couldn't find this person.");
@@ -231,7 +253,7 @@ export async function coach(user, { recipientId, draft }) {
   const me = await loadProfileRow(user.id);
   const row = await loadVisiblePerson(user, recipientId);
   // Only use what the other person has made public (e.g. employer hidden if they chose so).
-  const mentor = toPublicProfile(row, { viewer: user });
+  const mentor = toPublicProfile(row, { viewer: user, connected: row.connectionStatus === 'accepted' });
   return coachMessage({ student: me, mentor, sharedInterests: sharedPhrases(me.interests, mentor.interests), draft });
 }
 
@@ -243,6 +265,7 @@ export async function followUps(user, conversationId) {
   if (!c) throw notFound('We could not find that conversation.');
   const otherId = c.userA === user.id ? c.userB : c.userA;
   const me = await loadProfileRow(user.id);
-  const other = toPublicProfile(await loadVisiblePerson(user, otherId), { viewer: user, connected: true });
+  const loaded = await loadVisiblePerson(user, otherId);
+  const other = toPublicProfile(loaded, { viewer: user, connected: loaded.connectionStatus === 'accepted' });
   return suggestFollowUps({ other, sharedInterests: sharedPhrases(me.interests, other.interests) });
 }

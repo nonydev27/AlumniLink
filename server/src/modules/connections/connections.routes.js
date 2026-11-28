@@ -6,8 +6,8 @@ import { validate } from '../../middleware/validate.js';
 import { AppError, badRequest, conflict, notFound } from '../../utils/errors.js';
 import { asyncHandler, offsetOf, paginated } from '../../utils/http.js';
 import { idParam, pagingShape } from '../../utils/schemas.js';
-import { PROFILE_COLS, USER_COLS } from '../shared/sql.js';
-import { activeConnection, isBlocked } from '../shared/relations.js';
+import { CONN_LATERAL, NOT_BLOCKED, PROFILE_COLS, USER_COLS, VISIBLE_PROFILE } from '../shared/sql.js';
+import { activeConnection } from '../shared/relations.js';
 import { toPublicProfile } from '../shared/serializers.js';
 import { changeConnection } from './connections.service.js';
 import { publishNotification } from '../v2/notifications/notifications.service.js';
@@ -35,15 +35,24 @@ connectionsRoutes.post('/', validate({ body: createSchema }), asyncHandler(async
   if (recipientId === me.id) throw badRequest("You can't send a request to yourself.");
 
   const target = await db.one(
-    `select u.id, u.email, u.first_name, u.role, u.status, u.verification_status, p.willing_to_mentor
-       from users u join profiles p on p.user_id = u.id where u.id = $1`,
-    [recipientId],
+    `select u.id, u.email, u.first_name, u.role, u.status, u.verification_status, p.willing_to_mentor,
+            conn.status as connection_status
+       from users u join profiles p on p.user_id = u.id
+       ${CONN_LATERAL('$2', 'u.id')}
+      where u.id = $1 and ${VISIBLE_PROFILE('u.id', '$2')}`,
+    [recipientId, me.id],
   );
-  const reachable = target && target.status === 'active' && target.verificationStatus === 'verified' && target.role !== 'admin';
-  if (!reachable || (await isBlocked(db, me.id, recipientId))) throw notFound("We couldn't find this person.");
+  if (!target) throw notFound("We couldn't find this person.");
 
-  if (kind === 'mentorship' && !target.willingToMentor) {
-    throw new AppError(409, 'not_mentoring', `${target.firstName} isn't taking mentorship requests right now.`);
+  if (kind === 'mentorship') {
+    // The product contract is alumni mentoring students; keep the actor check here
+    // and again at acceptance so a role change cannot create an invalid pair.
+    if (target.role !== 'alumni') {
+      throw new AppError(409, 'not_alumnus', 'Mentorship is offered by alumni.');
+    }
+    if (!target.willingToMentor) {
+      throw new AppError(409, 'not_mentoring', `${target.firstName} isn't taking mentorship requests right now.`);
+    }
   }
 
   const existing = await activeConnection(db, me.id, recipientId);
@@ -99,6 +108,7 @@ connectionsRoutes.get('/', validate({ query: connectionListSchema }), asyncHandl
        join profiles p on p.user_id = u.id
       where (c.requester_id = $1 or c.recipient_id = $1) and c.status = $2 ${dir}
         and ($5::text is null or c.kind = $5) and u.status = 'active'
+        and u.deactivated_at is null and ${NOT_BLOCKED('$1', 'u.id')}
       order by c.created_at desc
       limit $3 offset $4`,
     [me.id, q.status, q.limit, offsetOf(q), q.kind || null],
